@@ -36,6 +36,8 @@ static void size_callback(GLFWwindow* /*window*/, int width, int height)
 
 int main(int argc, char* argv[])
 {
+    if(argc<0) return -1;
+
 
     /* Initialize the library */
     if (!glfwInit()) {
@@ -76,8 +78,6 @@ int main(int argc, char* argv[])
                                            applicationPath.dirPath() + "Projet/shaders/triangle.fs.glsl");
     program.use();
 
-
-    int out;
 
     GLuint vbo;
     glGenBuffers(1, &vbo);
@@ -121,5 +121,5 @@ int main(int argc, char* argv[])
     glDeleteVertexArrays(1, &vao);
     glfwTerminate();
 
-    return out;
+    return 0;
 }

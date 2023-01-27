@@ -1,5 +1,4 @@
 #version 300 es
-#define PI 3.141593
 precision mediump float;
 
 layout(location = 0) in vec3 aVertexPosition;

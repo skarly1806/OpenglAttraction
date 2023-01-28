@@ -7,6 +7,7 @@
 #include <glimac/Image.hpp>
 #include <glimac/Program.hpp>
 #include <glimac/Sphere.hpp>
+#include <glimac/Cylindre.hpp>
 #include <glimac/TrackballCamera.hpp>
 #include <glimac/common.hpp>
 #include <glimac/glm.hpp>
@@ -275,6 +276,9 @@ int main(int argc, char* argv[])
     // Création d'une sphère
     glimac::Sphere sphere(1, 64, 32);
 
+    // Création d'un cylindre
+    glimac::Cylindre cylindre(1, 0.5, 30, 30);
+
     /* VBO + VAO */
     GLuint vbo;
     glGenBuffers(1, &vbo);
@@ -306,6 +310,48 @@ int main(int argc, char* argv[])
 
     // Débinding du VAO
     glBindVertexArray(0);
+
+//////////////////////////////////
+/////////////////////////////////
+////////////cylindre/////////////
+/////////////////////////////////
+/////////////////////////////////
+/* VBO + VAO */
+    GLuint vbo;
+    glGenBuffers(1, &vbo);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+    // Envoie des données de vertex
+    glBufferData(GL_ARRAY_BUFFER, cylindre.getVertexCount() * sizeof(glimac::ShapeVertex), cylindre.getDataPointer(), GL_STATIC_DRAW);
+
+    // Débinding du VBO
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    // Création du VAO
+    GLuint vao;
+    glGenVertexArrays(1, &vao);
+
+    // Binding du VAO
+    glBindVertexArray(vao);
+    const GLuint VERTEX_ATTR_POSITION = 0;
+    const GLuint VERTEX_ATTR_NORMAL   = 1;
+    glEnableVertexAttribArray(VERTEX_ATTR_POSITION);
+    glEnableVertexAttribArray(VERTEX_ATTR_NORMAL);
+
+    // Spécification de l'attribut de sommet et de normal
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glVertexAttribPointer(VERTEX_ATTR_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(glimac::ShapeVertex), (const GLvoid*)offsetof(glimac::ShapeVertex, position));
+    glVertexAttribPointer(VERTEX_ATTR_NORMAL, 3, GL_FLOAT, GL_FALSE, sizeof(glimac::ShapeVertex), (const GLvoid*)offsetof(glimac::ShapeVertex, normal));
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+    // Débinding du VAO
+    glBindVertexArray(0);
+//////////////////////////////////
+/////////////////////////////////
+//////////////////////////////////
+/////////////////////////////////
+/////////////////////////////////
 
     /* GENERATE MOONS */
     generalInfos.NbMoons = 0;
@@ -379,6 +425,8 @@ int main(int argc, char* argv[])
 
         // Dessin de la terre
         glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
+        //Dessin du cylindre
+        glDrawArrays(GL_TRIANGLES, 0, cylindre.getVertexCount());
 
         // Positionnement de la sphère représentant la lumière
         lightMVMatrix = glm::translate(lightMVMatrix, glm::vec3(lightPos));  // Translation * Rotation * Translation

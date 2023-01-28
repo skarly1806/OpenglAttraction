@@ -283,14 +283,14 @@ int main(int argc, char* argv[])
     GLuint vbo;
     glGenBuffers(1, &vbo);
 
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    // glBindBuffer(GL_ARRAY_BUFFER, vbo);
 
-    // Envoie des données de vertex
-    glBufferData(GL_ARRAY_BUFFER, sphere.getVertexCount() * sizeof(glimac::ShapeVertex), sphere.getDataPointer(), GL_STATIC_DRAW);
-    glBufferData(GL_ARRAY_BUFFER, cylindre.getVertexCount() * sizeof(glimac::ShapeVertex), cylindre.getDataPointer(), GL_STATIC_DRAW);
+    // // Envoie des données de vertex
+    // glBufferData(GL_ARRAY_BUFFER, sphere.getVertexCount() * sizeof(glimac::ShapeVertex), sphere.getDataPointer(), GL_STATIC_DRAW);
+    // glBufferData(GL_ARRAY_BUFFER, cylindre.getVertexCount() * sizeof(glimac::ShapeVertex), cylindre.getDataPointer(), GL_STATIC_DRAW);
 
-    // Débinding du VBO
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    // // Débinding du VBO
+    // glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     // Création du VAO
     GLuint vao;
@@ -385,9 +385,16 @@ int main(int argc, char* argv[])
         earthMaterial->ChargeGLints();
 
         // Dessin de la terre
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, sphere.getVertexCount() * sizeof(glimac::ShapeVertex), sphere.getDataPointer(), GL_STATIC_DRAW);
         glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
-        //Dessin du cylindre
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        // Dessin du cylindre
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, cylindre.getVertexCount() * sizeof(glimac::ShapeVertex), cylindre.getDataPointer(), GL_STATIC_DRAW);
         glDrawArrays(GL_TRIANGLES, 0, cylindre.getVertexCount());
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         // Positionnement de la sphère représentant la lumière
         lightMVMatrix = glm::translate(lightMVMatrix, glm::vec3(lightPos));  // Translation * Rotation * Translation
@@ -399,7 +406,10 @@ int main(int argc, char* argv[])
         myLamp->ChargeGLints();
 
         // Dessin de la sphère représentant la lumière
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, sphere.getVertexCount() * sizeof(glimac::ShapeVertex), sphere.getDataPointer(), GL_STATIC_DRAW);
         glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         /* LUNES */
 

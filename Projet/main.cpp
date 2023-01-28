@@ -20,6 +20,7 @@ const float r = 0.5f;
 const float PI = 3.141593;
 
 #define MAX_TEXTURES 2
+#define MAX_LIGHTS 10
 
 static void key_callback(GLFWwindow* /*window*/, int /*key*/, int /*scancode*/, int /*action*/, int /*mods*/)
 {
@@ -67,45 +68,64 @@ private:
     GLint uMVMatrix_gl;
     GLint uNormalMatrix_gl;
 
-    GLint kd_gl;
-    GLint ks_gl;
+    GLint color_gl;
+    GLint specularIntensity_gl;
     GLint shininess_gl;
     GLint hasTexture_gl;
+    GLint isLamp_gl;
 
-    GLint uTextures_gl[MAX_TEXTURES];
+    GLuint* uTextures_gl;
 
 public:
-    glm::vec3  kd;
-    glm::vec3  ks;
+    glm::vec3  color;
+    float      specularIntensity;
     float      shininess;
     bool       hasTexture;
+    bool       isLamp;
+
+    std::unique_ptr<glimac::Image>* uTextures;
 
     Material(){}
 
     Material(GLint prog_GLid)
     {
-        kd_gl         = glGetUniformLocation(prog_GLid, "uMaterial.ks");
-        ks_gl         = glGetUniformLocation(prog_GLid, "uMaterial.kd");
-        shininess_gl  = glGetUniformLocation(prog_GLid, "uMaterial.shininess");
+        color_gl         = glGetUniformLocation(prog_GLid, "uMaterial.color");
+        specularIntensity_gl = glGetUniformLocation(prog_GLid, "uMaterial.specularIntensity");
+        shininess_gl     = glGetUniformLocation(prog_GLid, "uMaterial.shininess");
+
         hasTexture_gl = glGetUniformLocation(prog_GLid, "uMaterial.hasTexture");
+        isLamp_gl        = glGetUniformLocation(prog_GLid, "uMaterial.isLamp");
+
         uMVPMatrix_gl   = glGetUniformLocation(prog_GLid, "uMVPMatrix");
         uMVMatrix_gl    = glGetUniformLocation(prog_GLid, "uMVMatrix");
         uNormalMatrix_gl = glGetUniformLocation(prog_GLid, "uNormalMatrix");
 
         // Textures
+        uTextures_gl = (GLuint*)calloc(MAX_TEXTURES, sizeof(GLuint));
+        uTextures    = (std::unique_ptr<glimac::Image>*)calloc(MAX_TEXTURES, sizeof(std::unique_ptr<glimac::Image>));
+
         for (int i = 0; i < MAX_TEXTURES; i++) {
-            std::string name = "uMaterial.textures[";
-            name.push_back(char(i));
-            name.push_back(']');
-            uTextures_gl[i] = glGetUniformLocation(prog_GLid, name.c_str());
+            char varname[50] = "";
+            sprintf(varname, "uMaterial.textures[%d]", i);
+            uTextures_gl[i] = glGetUniformLocation(prog_GLid, varname);
         }
     }
 
     void ChargeGLints(){
-        glUniform3f(kd_gl, kd.x, kd.y, kd.z);
-        glUniform3f(ks_gl, ks.x, ks.y, ks.z);
+        glUniform3f(color_gl, color.x, color.y, color.z);
+        glUniform1f(specularIntensity_gl, specularIntensity);
         glUniform1f(shininess_gl, shininess);
         glUniform1f(hasTexture_gl, hasTexture);
+        glUniform1f(isLamp_gl, isLamp);
+        if (hasTexture)
+            for (int i = 0; i < MAX_TEXTURES; i++) {
+                glGenTextures(1, &(uTextures_gl[i]));
+                glBindTexture(GL_TEXTURE_2D, uTextures_gl[i]);
+                glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, uTextures[i]->getWidth(), uTextures[i]->getHeight(), 0, GL_RGBA, GL_FLOAT, uTextures[i]->getPixels());
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+                glBindTexture(GL_TEXTURE_2D, 0);
+            }
     }
 
     void ChargeMatrices(glm::mat4 materialMVMatrix, glm::mat4 projMatrix)
@@ -120,23 +140,45 @@ struct PointLight {
 private:
     GLint position_gl;
     GLint intensity_gl;
+    GLint color_gl;
 
 public:
     glm::vec3 position;
-    glm::vec3 intensity;
+    float     intensity;
+    glm::vec3 color;
 
     PointLight() {}
 
-    PointLight(GLint prog_GLid)
+    PointLight(GLint prog_GLid, int i)
     {
-        position_gl  = glGetUniformLocation(prog_GLid, "uPointLight.position");
-        intensity_gl = glGetUniformLocation(prog_GLid, "uPointLight.intensity");
+        char varname[50] = "";
+        sprintf(varname, "uPointLights[%d].position", i);
+        position_gl = glGetUniformLocation(prog_GLid, varname);
+
+        sprintf(varname, "uPointLights[%d].intensity", i);
+        intensity_gl = glGetUniformLocation(prog_GLid, varname);
+
+        sprintf(varname, "uPointLights[%d].color", i);
+        color_gl = glGetUniformLocation(prog_GLid, varname);
+
     }
 
     void ChargeGLints(glm::vec3 light_position)
     {
         glUniform3fv(position_gl, 1, glm::value_ptr(light_position));
-        glUniform3f(intensity_gl, intensity.x, intensity.y, intensity.z);
+        glUniform3f(color_gl, color.x, color.y, color.z);
+        glUniform1f(intensity_gl, intensity);
+    }
+
+    Material* GenerateLampe(GLint prog_GLid)
+    {
+        Material* my_lampe = new Material(prog_GLid);
+        my_lampe->color = color;
+        my_lampe->hasTexture = false;
+        my_lampe->isLamp = true;
+        my_lampe->shininess = 6.f;
+        my_lampe->specularIntensity = 1.f;
+        return my_lampe;
     }
 };
 
@@ -144,23 +186,36 @@ struct DirLight {
 private:
     GLint direction_gl;
     GLint intensity_gl;
+    GLint color_gl;
 
 public:
     glm::vec3 direction;
-    glm::vec3 intensity;
+    float intensity;
+    glm::vec3 color;
 
     DirLight() {}
 
-    DirLight(GLint prog_GLid)
+    DirLight(GLint prog_GLid, int i)
     {
-        direction_gl = glGetUniformLocation(prog_GLid, "uDirLight.direction");
-        intensity_gl = glGetUniformLocation(prog_GLid, "uDirLight.intensity");
+        std::string basename = "uDirLights[";
+        basename.push_back(char(i));
+        basename.push_back(']');
+        basename.push_back('.');
+
+        std::string directionname = basename + "direction";
+        std::string intensityname = basename + "intensity";
+        std::string colorname = basename + "color";
+
+        direction_gl = glGetUniformLocation(prog_GLid, directionname.c_str());
+        intensity_gl = glGetUniformLocation(prog_GLid, intensityname.c_str());
+        color_gl     = glGetUniformLocation(prog_GLid, colorname.c_str());
     }
 
     void ChargeGLints()
     {
         glUniform3f(direction_gl, direction.x, direction.y, direction.z);
-        glUniform3f(intensity_gl, intensity.x, intensity.y, intensity.z);
+        glUniform3f(color_gl, color.x, color.y, color.z);
+        glUniform1f(intensity_gl, intensity);
     }
 };
 
@@ -168,35 +223,47 @@ public:
 struct GeneralInfos {
 private:
     GLint AmbiantLight_gl;
+    GLint ViewPos_gl;
+
+    GLint NbLights_gl;
 
 public:
-    glm::vec3             AmbiantLight = glm::vec3(0, 0, 0);
+    glm::vec3 ViewPos; // position camera
 
-    Material      *        EarthMaterial;
+    glm::vec3 AmbiantLight = glm::vec3(0, 0, 0);
+
+    Material* EarthMaterial;
 
     std::vector<Material*> MoonMaterials;
-    int                   NbMoons;
+    int                    NbMoons;
 
-    DirLight*              MyDirLight;
+    std::vector<DirLight*> DirLights;
+    std::vector<PointLight*> PointLights;
+    std::vector<Material*> Lampes;
 
-    PointLight  *          MyPointLight;
-    Material   *           MyLamp;
+    glm::vec2 NbLights = glm::vec2(0, 0);
 
-    GeneralInfos(GLuint prog_GLid)
+    // Material* Lampe;
+    // PointLight* uPointLight;
+
+    GeneralInfos(GLint prog_GLid)
     {
         AmbiantLight_gl = glGetUniformLocation(prog_GLid, "uAmbiantLight");
+        ViewPos_gl = glGetUniformLocation(prog_GLid, "uViewPos");
 
+        NbLights_gl = glGetUniformLocation(prog_GLid, "NbLights");
+
+        ViewPos         = glm::vec3(0, 0, 0);
         AmbiantLight    = glm::vec3(0, 0, 0);
         NbMoons         = 0;
         EarthMaterial   = new Material(prog_GLid);
-        MyDirLight      = new DirLight(prog_GLid);
-        MyPointLight    = new PointLight(prog_GLid);
-        MyLamp          = new Material(prog_GLid);
     }
 
     void ChargeGLints()
     {
         glUniform3f(AmbiantLight_gl, AmbiantLight.x, AmbiantLight.y, AmbiantLight.z);
+        glUniform3f(ViewPos_gl, ViewPos.x, ViewPos.y, ViewPos.z);
+        glUniform2f(NbLights_gl, NbLights.x, NbLights.y);
     }
 };
 
@@ -241,38 +308,43 @@ int main(int argc, char* argv[])
     glimac::FilePath applicationPath(argv[0]);
 
     glimac::Program program(loadProgram(applicationPath.dirPath() + "Projet/shaders/3D.vs.glsl",
-                                        applicationPath.dirPath() + "Projet/shaders/pointlight.fs.glsl"));
+                                        applicationPath.dirPath() + "Projet/shaders/lights.fs.glsl"));
     program.use();
 
-    /* GET SHADER ADDRESSES FOR LIGHT */
-    GeneralInfos generalInfos(program.getGLId());
-    Material*    earthMaterial = generalInfos.EarthMaterial;
-    PointLight*  myPointLight  = generalInfos.MyPointLight;
-    Material*    myLamp        = generalInfos.MyLamp;
-    // DirLight  *     myDirLight    = generalInfos.MyDirLight;
-
-    generalInfos.AmbiantLight = glm::vec3(0.2, 0.2, 0.2);
-    generalInfos.ChargeGLints();
-
-    myPointLight->position  = glm::vec3(2, 4, 0);
-    myPointLight->intensity = glm::vec3(1, 0, 1);
-
-    myLamp->kd         = glm::vec3(myPointLight->intensity);
-    myLamp->ks         = glm::vec3(myPointLight->intensity);
-    myLamp->shininess  = 6.f;
-    myLamp->hasTexture = false;
-
-    earthMaterial->kd         = glm::vec3(1, 0, 0);
-    earthMaterial->ks         = glm::vec3(0, 0, 1);
-    earthMaterial->shininess  = 5;
-    earthMaterial->hasTexture = false;
-
     glEnable(GL_DEPTH_TEST); // Permet d'activer le test de profondeur du GPU
+
+    /* CREATE ALL THINGS */
+    GeneralInfos* generalInfos = new GeneralInfos(program.getGLId());
+    Material*     earthMaterial = generalInfos->EarthMaterial;
+
+    // set ambiant light infos and charge in shaders
+    generalInfos->AmbiantLight = glm::vec3(0.2, 0.2, 0.2);
+
+    // set point light infos
+    int numPL = 0;
+    generalInfos->PointLights.push_back(new PointLight(program.getGLId(), numPL));
+    PointLight* myPointLight        = generalInfos->PointLights[numPL];
+    myPointLight->position          = glm::vec3(2, 4, 0);
+    myPointLight->intensity         = 2.f;
+    myPointLight->color             = glm::vec3(1, 1, 1);
+
+    Material* myLamp = myPointLight->GenerateLampe(program.getGLId());
+    generalInfos->Lampes.push_back(myLamp);
+
+    generalInfos->NbLights = glm::vec2(0, 1);
+
+    generalInfos->ChargeGLints();
+
+    // set earth infos
+    earthMaterial->color         = glm::vec3(1, 0, 0);
+    earthMaterial->specularIntensity = 1.f;
+    earthMaterial->shininess  = 30;
+    earthMaterial->hasTexture = false;
+    earthMaterial->isLamp = false;
 
     /* CALCULATE MATRICES */
     glm::mat4 projMatrix     = glm::perspective(glm::radians(70.f), float(window_width) / float(window_height), 0.1f, 100.f);
     glm::mat4 globalMVMatrix = glm::translate(glm::mat4(), glm::vec3(0, 0, -5));
-    // glm::mat4 normalMatrix = glm::transpose(glm::inverse(MVMatrix));
 
     // Création d'une sphère
     glimac::Sphere sphere(1, 64, 32);
@@ -284,17 +356,9 @@ int main(int argc, char* argv[])
     glimac::Cone cone(1, 0.5, 30, 5);
 
     /* VBO + VAO */
+    // création du VBO
     GLuint vbo;
     glGenBuffers(1, &vbo);
-
-    // glBindBuffer(GL_ARRAY_BUFFER, vbo);
-
-    // // Envoie des données de vertex
-    // glBufferData(GL_ARRAY_BUFFER, sphere.getVertexCount() * sizeof(glimac::ShapeVertex), sphere.getDataPointer(), GL_STATIC_DRAW);
-    // glBufferData(GL_ARRAY_BUFFER, cylindre.getVertexCount() * sizeof(glimac::ShapeVertex), cylindre.getDataPointer(), GL_STATIC_DRAW);
-
-    // // Débinding du VBO
-    // glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     // Création du VAO
     GLuint vao;
@@ -302,8 +366,8 @@ int main(int argc, char* argv[])
 
     // Binding du VAO
     glBindVertexArray(vao);
-    const GLuint VERTEX_ATTR_POSITION = 0;
-    const GLuint VERTEX_ATTR_NORMAL   = 1;
+    const GLint VERTEX_ATTR_POSITION = 0;
+    const GLint VERTEX_ATTR_NORMAL   = 1;
     glEnableVertexAttribArray(VERTEX_ATTR_POSITION);
     glEnableVertexAttribArray(VERTEX_ATTR_NORMAL);
 
@@ -316,20 +380,18 @@ int main(int argc, char* argv[])
     // Débinding du VAO
     glBindVertexArray(0);
 
-
-
     /* GENERATE MOONS */
-    generalInfos.NbMoons = 0;
+    generalInfos->NbMoons = 0;
     std::vector<glm::vec3> randomTransform;
 
-    for (int i = 0; i < generalInfos.NbMoons; ++i) {
+    for (int i = 0; i < generalInfos->NbMoons; ++i) {
         Material* new_moon = new Material(program.getGLId());
         randomTransform.push_back(glm::sphericalRand(2.f));
-        new_moon->kd         = glm::vec3(glm::linearRand(0.1f, 1.f) * .8, glm::linearRand(0.1f, 1.f) * .5, glm::linearRand(0.1f, 1.f) * .2);
-        new_moon->ks         = glm::vec3(.2, 0, 0);
+        new_moon->color         = glm::vec3(glm::linearRand(0.1f, 1.f) * .8, glm::linearRand(0.1f, 1.f) * .5, glm::linearRand(0.1f, 1.f) * .2);
+        new_moon->specularIntensity  = 0.2f;
         new_moon->shininess  = randomFloat(20.f);
         new_moon->hasTexture = false;
-        generalInfos.MoonMaterials.push_back(new_moon);
+        generalInfos->MoonMaterials.push_back(new_moon);
     }
 
     /* CAMERA */
@@ -359,7 +421,9 @@ int main(int argc, char* argv[])
 
         /* RENDERING */
 
-        glm::mat4 ViewMatrix = camera.getViewMatrix();
+        glm::mat4 ViewMatrix  = camera.getViewMatrix();
+        generalInfos->ViewPos = glm::vec3(ViewMatrix[0][0], ViewMatrix[0][1], ViewMatrix[0][2]);
+        generalInfos->ChargeGLints();
 
         // clear window
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -377,13 +441,15 @@ int main(int argc, char* argv[])
 
         /* GESTION LUMIERE */
 
-        // glm::mat4 lightMVMatrix = globalMVMatrix;
-        glm::vec3 lightPos(myPointLight->position.x, myPointLight->position.y * (glm::cos((float)glfwGetTime()) * glm::sin((float)glfwGetTime())), myPointLight->position.z); // position mouvement de spirale
+        PointLight* currentLight = generalInfos->PointLights[0];
+
+        glm::vec3 lightPos(currentLight->position.x, currentLight->position.y * (glm::cos((float)glfwGetTime()) * glm::sin((float)glfwGetTime())), currentLight->position.z); // position mouvement de spirale
         glm::mat4 lightMVMatrix = glm::rotate(globalMVMatrix, (float)glfwGetTime(), glm::vec3(0, 1, 0));                                                                      // Translation * Rotation
         glm::vec3 lightPos_vs(lightMVMatrix * glm::vec4(lightPos, 1));
 
         // /* CHARGEMENT LUMIERE */
-        myPointLight->ChargeGLints(lightPos_vs);
+        currentLight->ChargeGLints(lightPos_vs);
+        //printf("%f, %f %f %f\n", currentLight->intensity, currentLight->color.x, currentLight->color.y, currentLight->color.z);
 
         /* CHARGEMENT MATERIAU TERRE */
         earthMaterial->ChargeGLints();
@@ -391,7 +457,7 @@ int main(int argc, char* argv[])
         // Dessin de la terre
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferData(GL_ARRAY_BUFFER, sphere.getVertexCount() * sizeof(glimac::ShapeVertex), sphere.getDataPointer(), GL_STATIC_DRAW);
-        //glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
+        glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         // Dessin du cylindre
@@ -403,13 +469,14 @@ int main(int argc, char* argv[])
         // Dessin du cone
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferData(GL_ARRAY_BUFFER, cone.getVertexCount() * sizeof(glimac::ShapeVertex), cone.getDataPointer(), GL_STATIC_DRAW);
-        glDrawArrays(GL_TRIANGLES, 0, cone.getVertexCount());
+        //glDrawArrays(GL_TRIANGLES, 0, cone.getVertexCount());
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         // Positionnement de la sphère représentant la lumière
         lightMVMatrix = glm::translate(lightMVMatrix, glm::vec3(lightPos));  // Translation * Rotation * Translation
         lightMVMatrix = glm::scale(lightMVMatrix, glm::vec3(.04, .04, .04)); // Translation * Rotation * Translation * Scale
 
+        myLamp = generalInfos->Lampes[0];
         myLamp->ChargeMatrices(lightMVMatrix, projMatrix);
 
         /* CHARGEMENT DE LA LAMPE */
@@ -423,13 +490,13 @@ int main(int argc, char* argv[])
 
         /* LUNES */
 
-        for (int i = 0; i < generalInfos.NbMoons; ++i) {
+        for (int i = 0; i < generalInfos->NbMoons; ++i) {
             // Transformations nécessaires pour la Lune
             glm::mat4 moonMVMatrix = glm::rotate(globalMVMatrix, (1 + randomTransform[i][0] + randomTransform[i][1] + randomTransform[i][2]) * (float)glfwGetTime(), glm::cross(glm::vec3(1, 1, 1), randomTransform[i])); // Translation * Rotation
             moonMVMatrix           = glm::translate(moonMVMatrix, randomTransform[i]);                                                                                                                                    // Translation * Rotation * Translation
             moonMVMatrix           = glm::scale(moonMVMatrix, glm::vec3(0.2, 0.2, 0.2));                                                                                                                                  // Translation * Rotation * Translation * Scale
 
-            generalInfos.MoonMaterials[i]->ChargeMatrices(moonMVMatrix, projMatrix);
+            generalInfos->MoonMaterials[i]->ChargeMatrices(moonMVMatrix, projMatrix);
 
             // glUniform3f(uLightIntensity, .2, .2, .2);
             // glUniform3fv(uLightPos_vs, 1, glm::value_ptr(lightPos_vs));
@@ -437,7 +504,7 @@ int main(int argc, char* argv[])
             // glUniform3f(uKs, randomColor[i].r * .8, randomColor[i].g *.5, randomColor[i].b * .2);
             // glUniform1f(uShininess, 2);
 
-            generalInfos.MoonMaterials[i]->ChargeGLints();
+            generalInfos->MoonMaterials[i]->ChargeGLints();
 
             glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
         }

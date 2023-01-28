@@ -7,6 +7,7 @@
 #include <glimac/Image.hpp>
 #include <glimac/Program.hpp>
 #include <glimac/Sphere.hpp>
+#include <glimac/Cone.hpp>
 #include <glimac/Cylindre.hpp>
 #include <glimac/TrackballCamera.hpp>
 #include <glimac/common.hpp>
@@ -279,6 +280,9 @@ int main(int argc, char* argv[])
     // Création d'un cylindre
     glimac::Cylindre cylindre(1, 0.5, 30, 30);
 
+    // Création d'un cone
+    glimac::Cone cone(1, 0.5, 30, 5);
+
     /* VBO + VAO */
     GLuint vbo;
     glGenBuffers(1, &vbo);
@@ -337,21 +341,21 @@ int main(int argc, char* argv[])
 
         /* MOUSE */
         glfwPollEvents();
-        // double c_xpos, c_ypos;
-        // glfwGetCursorPos(window, &c_xpos, &c_ypos);
+        double c_xpos, c_ypos;
+        glfwGetCursorPos(window, &c_xpos, &c_ypos);
 
-        // camera.rotateUp(c_xpos);
-        // camera.rotateLeft(c_ypos);
+        camera.rotateUp(c_xpos);
+        camera.rotateLeft(c_ypos);
 
-        // /* KEYBOARD */
-        // int state = glfwGetKey(window, GLFW_KEY_W);
-        // if (state == GLFW_PRESS) {
-        //     camera.moveFront(0.2f);
-        // }
-        // state = glfwGetKey(window, GLFW_KEY_S);
-        // if (state == GLFW_PRESS) {
-        //     camera.moveFront(-0.2f);
-        // }
+        /* KEYBOARD */
+        int state = glfwGetKey(window, GLFW_KEY_W);
+        if (state == GLFW_PRESS) {
+            camera.moveFront(0.2f);
+        }
+        state = glfwGetKey(window, GLFW_KEY_S);
+        if (state == GLFW_PRESS) {
+            camera.moveFront(-0.2f);
+        }
 
         /* RENDERING */
 
@@ -387,13 +391,19 @@ int main(int argc, char* argv[])
         // Dessin de la terre
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferData(GL_ARRAY_BUFFER, sphere.getVertexCount() * sizeof(glimac::ShapeVertex), sphere.getDataPointer(), GL_STATIC_DRAW);
-        glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
+        //glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         // Dessin du cylindre
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferData(GL_ARRAY_BUFFER, cylindre.getVertexCount() * sizeof(glimac::ShapeVertex), cylindre.getDataPointer(), GL_STATIC_DRAW);
-        glDrawArrays(GL_TRIANGLES, 0, cylindre.getVertexCount());
+        // glDrawArrays(GL_TRIANGLES, 0, cylindre.getVertexCount());
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        // Dessin du cone
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, cone.getVertexCount() * sizeof(glimac::ShapeVertex), cone.getDataPointer(), GL_STATIC_DRAW);
+        glDrawArrays(GL_TRIANGLES, 0, cone.getVertexCount());
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         // Positionnement de la sphère représentant la lumière

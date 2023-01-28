@@ -9,13 +9,13 @@ namespace glimac {
 // Son axe vertical est (0, 1, 0) et ses axes transversaux sont (1, 0, 0) et (0, 0, 1)
 class Cylindre {
     // Alloue et construit les données (implantation dans le .cpp)
-    void build(GLfloat height, GLfloat radius, GLsizei discLat, GLsizei cylindreHeight);
+    void build(GLfloat height, GLfloat radius, GLsizei discLat, GLsizei discHeight);
 
 public:
     // Constructeur: alloue le tableau de données et construit les attributs des vertex
-    Cylindre(GLfloat height, GLfloat radius, GLsizei discLat, GLsizei cylindreHeight):
+    Cylindre(GLfloat height, GLfloat radius, GLsizei discLat, GLsizei discHeight):
         m_nVertexCount(0) {
-        build(height, radius, discLat, cylindreHeight); // Construction (voir le .cpp)
+        build(height, radius, discLat, discHeight); // Construction (voir le .cpp)
     }
 
     // Renvoit le pointeur vers les données

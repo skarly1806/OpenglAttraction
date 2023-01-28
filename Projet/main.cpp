@@ -287,42 +287,6 @@ int main(int argc, char* argv[])
 
     // Envoie des données de vertex
     glBufferData(GL_ARRAY_BUFFER, sphere.getVertexCount() * sizeof(glimac::ShapeVertex), sphere.getDataPointer(), GL_STATIC_DRAW);
-
-    // Débinding du VBO
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    // Création du VAO
-    GLuint vao;
-    glGenVertexArrays(1, &vao);
-
-    // Binding du VAO
-    glBindVertexArray(vao);
-    const GLuint VERTEX_ATTR_POSITION = 0;
-    const GLuint VERTEX_ATTR_NORMAL   = 1;
-    glEnableVertexAttribArray(VERTEX_ATTR_POSITION);
-    glEnableVertexAttribArray(VERTEX_ATTR_NORMAL);
-
-    // Spécification de l'attribut de sommet et de normal
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glVertexAttribPointer(VERTEX_ATTR_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(glimac::ShapeVertex), (const GLvoid*)offsetof(glimac::ShapeVertex, position));
-    glVertexAttribPointer(VERTEX_ATTR_NORMAL, 3, GL_FLOAT, GL_FALSE, sizeof(glimac::ShapeVertex), (const GLvoid*)offsetof(glimac::ShapeVertex, normal));
-    glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-    // Débinding du VAO
-    glBindVertexArray(0);
-
-//////////////////////////////////
-/////////////////////////////////
-////////////cylindre/////////////
-/////////////////////////////////
-/////////////////////////////////
-/* VBO + VAO */
-    GLuint vbo;
-    glGenBuffers(1, &vbo);
-
-    glBindBuffer(GL_ARRAY_BUFFER, vbo);
-
-    // Envoie des données de vertex
     glBufferData(GL_ARRAY_BUFFER, cylindre.getVertexCount() * sizeof(glimac::ShapeVertex), cylindre.getDataPointer(), GL_STATIC_DRAW);
 
     // Débinding du VBO
@@ -347,11 +311,8 @@ int main(int argc, char* argv[])
 
     // Débinding du VAO
     glBindVertexArray(0);
-//////////////////////////////////
-/////////////////////////////////
-//////////////////////////////////
-/////////////////////////////////
-/////////////////////////////////
+
+
 
     /* GENERATE MOONS */
     generalInfos.NbMoons = 0;

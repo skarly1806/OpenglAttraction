@@ -1,3 +1,4 @@
+import math
 import random
 
 class point():
@@ -11,21 +12,18 @@ class point():
 
 def main():
     pstart = point(0, 0, 0)
+
     p = point(pstart.x, pstart.y, pstart.z)
     print(pstart)
     for i in range(10):
-        l = 1
+        theta = math.pi/2 * random.random()
+        phi = math.acos(random.random()*2 - 1)
+
         p = point(p.x, p.y, p.z)
 
-        v1 = random.random()
-        p.x = p.x + v1
-        l = l - v1
-
-        v2 = random.random()
-        p.z = p.z + v2
-        l = l - v2
-
-        p.y = p.y + l
+        p.x = p.x + math.cos(theta) * math.sin(phi)
+        p.y = p.y + math.sin(theta) * math.sin(phi)
+        p.z = p.z + math.cos(phi)
 
         print(p)
 

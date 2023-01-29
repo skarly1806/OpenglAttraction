@@ -2,14 +2,15 @@
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
 #include <cstddef>
-#include <glimac/FilePath.hpp>
-#include <glimac/FreeFlyCamera.hpp>
-#include <glimac/Image.hpp>
-#include <glimac/Program.hpp>
-#include <glimac/Sphere.hpp>
 #include <glimac/Cone.hpp>
 #include <glimac/Cylindre.hpp>
+#include <glimac/FilePath.hpp>
+#include <glimac/FreeFlyCamera.hpp>
+#include <glimac/Geometry.hpp>
+#include <glimac/Image.hpp>
 #include <glimac/LoadObject.hpp>
+#include <glimac/Program.hpp>
+#include <glimac/Sphere.hpp>
 #include <glimac/TrackballCamera.hpp>
 #include <glimac/common.hpp>
 #include <glimac/glm.hpp>
@@ -62,14 +63,6 @@ float randomFloat(float limit)
     return static_cast<float>(rand()) / static_cast<float>(RAND_MAX / limit);
 }
 
-struct Wagon {
-public:
-    std::vector<glm::vec3> verticesWagon;
-    std::vector<glm::vec2> uvsWagon;
-    std::vector<glm::vec3> normalsWagon;
-
-    Wagon(){}
-};
 
 struct Material {
 private:
@@ -258,7 +251,7 @@ public:
     Material* CircuitMaterial;
     int NbCircuitPoints = 0;
 
-    Wagon* wagon;
+    glimac::Geometry* wagon;
 
     GeneralInfos(GLint prog_GLid)
     {
@@ -452,10 +445,10 @@ int main(int argc, char* argv[])
 
     //
     // Lecture du wagon
-    generalInfos->wagon = new Wagon();
-    bool res = loadOBJ("./assets/models/wagon.obj", generalInfos->wagon->verticesWagon, generalInfos->wagon->uvsWagon, generalInfos->wagon->normalsWagon);
-    if (!res) {
-        printf("ERROR while loading Wagon! \n");
+    generalInfos->wagon = new glimac::Geometry();
+    bool res = generalInfos->wagon->loadOBJ("./assets/models/wagon.obj", "./assets/models/wagon.mtl", false);
+    if(!res){
+        printf("ERROR chargement du wagon! \n");
         exit(-1);
     }
 
@@ -464,9 +457,16 @@ int main(int argc, char* argv[])
     GLuint vbo;
     glGenBuffers(1, &vbo);
 
+    // GLuint ibo ;
+    // glGenBuffers(1, &ibo);
+    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, generalInfos->wagon->getIndexCount() * sizeof(unsigned int), generalInfos->wagon->getIndexBuffer(), GL_STATIC_DRAW);
+    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
     // Création du VAO
     GLuint vao;
     glGenVertexArrays(1, &vao);
+    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
 
     // Binding du VAO
     glBindVertexArray(vao);
@@ -483,6 +483,7 @@ int main(int argc, char* argv[])
 
     // Débinding du VAO
     glBindVertexArray(0);
+    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
 
     /* GENERATE MOONS */
     generalInfos->NbMoons = 0;
@@ -564,29 +565,33 @@ int main(int argc, char* argv[])
         // //glDrawArrays(GL_TRIANGLES, 0, cone.getVertexCount());
         // glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-        // Dessin du wagon
-        GLuint vertexbuffer;
-        glGenBuffers(1, &vertexbuffer);
-        glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-        glBufferData(GL_ARRAY_BUFFER, generalInfos->wagon->verticesWagon.size() * sizeof(glm::vec3), &(generalInfos->wagon->verticesWagon)[0], GL_STATIC_DRAW);
+        // // Dessin du wagon
+        // GLuint vertexbuffer;
+        // glGenBuffers(1, &vertexbuffer);
+        // glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
+        // glBufferData(GL_ARRAY_BUFFER, generalInfos->wagon->verticesWagon.size() * sizeof(glm::vec3), &(generalInfos->wagon->verticesWagon)[0], GL_STATIC_DRAW);
 
-        GLuint uvbuffer;
-        glGenBuffers(1, &uvbuffer);
-        glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
-        glBufferData(GL_ARRAY_BUFFER, generalInfos->wagon->uvsWagon.size() * sizeof(glm::vec2), &(generalInfos->wagon->uvsWagon)[0], GL_STATIC_DRAW);
+        // GLuint uvbuffer;
+        // glGenBuffers(1, &uvbuffer);
+        // glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
+        // glBufferData(GL_ARRAY_BUFFER, generalInfos->wagon->uvsWagon.size() * sizeof(glm::vec2), &(generalInfos->wagon->uvsWagon)[0], GL_STATIC_DRAW);
 
-        // on attribu le buffer : vertices
-        glEnableVertexAttribArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-		glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,0,(void*)0);
+        // // on attribu le buffer : vertices
+        // glEnableVertexAttribArray(0);
+		// glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
+		// glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,0,(void*)0);
 
-		// on attribu le buffer : UVs
-		glEnableVertexAttribArray(1);
-		glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
-		glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,0,(void*)0);
+		// // on attribu le buffer : UVs
+		// glEnableVertexAttribArray(1);
+		// glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
+		// glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,0,(void*)0);
 
 		// Dessin du wagon
-        glDrawArrays(GL_TRIANGLES, 0, generalInfos->wagon->uvsWagon.size());
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, generalInfos->wagon->getVertexCount() * sizeof(unsigned int), generalInfos->wagon->getVertexBuffer(), GL_STATIC_DRAW);
+        glDrawElements(GL_TRIANGLES, generalInfos->wagon->getIndexCount(), GL_UNSIGNED_INT, generalInfos->wagon->getIndexBuffer());
+        // glDrawArrays(GL_TRIANGLES, 0, generalInfos->wagon->getVertexCount());
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         // Positionnement de la sphère représentant la lumière
         lightMVMatrix = glm::translate(lightMVMatrix, glm::vec3(lightPos));  // Translation * Rotation * Translation

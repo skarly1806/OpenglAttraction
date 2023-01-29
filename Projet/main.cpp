@@ -292,7 +292,7 @@ void HandleEvents(GLFWwindow* window, glimac::TrackballCamera* camera)
 
 void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo)
 {
-    printf("new:\n");
+    //printf("new:\n");
     for (int i = 0; i < generalInfos->NbCircuitPoints - 1; i++) {
 
         generalInfos->EarthMaterial->color = generalInfos->CircuitColors[i];
@@ -328,7 +328,7 @@ void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo)
         glDrawArrays(GL_TRIANGLES, 0, newCyl.getVertexCount());
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
-    printf("\n\n");
+    //printf("\n\n");
 }
 
 int main(int argc, char* argv[])

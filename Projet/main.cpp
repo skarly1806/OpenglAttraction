@@ -235,7 +235,7 @@ public:
 
     glm::vec3 AmbiantLight = glm::vec3(0, 0, 0);
 
-    Material* EarthMaterial;
+    Material* CircuitMaterial;
 
     std::vector<Material*> MoonMaterials;
     int                    NbMoons;
@@ -260,7 +260,7 @@ public:
         ViewPos         = glm::vec3(0, 0, 0);
         AmbiantLight    = glm::vec3(0, 0, 0);
         NbMoons         = 0;
-        EarthMaterial   = new Material(prog_GLid);
+        CircuitMaterial = new Material(prog_GLid);
     }
 
     void ChargeGLints()
@@ -292,17 +292,17 @@ void HandleEvents(GLFWwindow* window, glimac::TrackballCamera* camera)
 
 void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo)
 {
-    //printf("new:\n");
-    for (int i = 0; i < generalInfos->NbCircuitPoints - 1; i++) {
-
-        generalInfos->EarthMaterial->color = generalInfos->CircuitColors[i];
+    printf("new:\n");
+    for (int i = 0; i < generalInfos->NbCircuitPoints; i++) {
+        generalInfos->CircuitMaterial->color = generalInfos->CircuitColors[i];
 
         glm::vec3 Pstart = generalInfos->Circuit[i];
-        glm::vec3 Pend = generalInfos->Circuit[i+1];
+
+        glm::vec3 Pend = (generalInfos->NbCircuitPoints-1 == i) ? generalInfos->Circuit[0] : generalInfos->Circuit[i+1];
         glm::vec3 direction = glm::normalize(Pend - Pstart);
         glm::vec3 cylinderDirection = glm::vec3(0, 0, 1);
 
-        float angle = 180.f; // set a 180 au cas ou parallele et opposés
+        float angle = glm::radians(180.f); // set a 180 au cas ou parallele et opposés
         glm::vec3 axis = glm::cross(cylinderDirection, direction);
         if (glm::length(axis) > 0.1f)
             angle = glm::asin(glm::length(axis));
@@ -312,14 +312,14 @@ void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo)
             axis = glm::vec3(0, 1, 0); // on prend un axe qulconque a 90° de l'axe du cylindre (0,0,1)
         }
 
-        //printf("%f, %f %f %f, LEN : %f\n", angle, axis.x, axis.y, axis.z, glm::length(direction));
+        printf("Angle: %f, Axis:%f %f %f, LEN: %f, DIR: %f %f %f\n", angle, axis.x, axis.y, axis.z, glm::length(direction), direction.x, direction.y, direction.z);
 
         glm::mat4 circuitMVMatrix = generalInfos->globalMVMatrix;
         circuitMVMatrix           = glm::translate(circuitMVMatrix, Pstart);
         circuitMVMatrix           = glm::rotate(circuitMVMatrix, angle, axis);
 
-        generalInfos->EarthMaterial->ChargeMatrices(circuitMVMatrix, generalInfos->projMatrix);
-        generalInfos->EarthMaterial->ChargeGLints();
+        generalInfos->CircuitMaterial->ChargeMatrices(circuitMVMatrix, generalInfos->projMatrix);
+        generalInfos->CircuitMaterial->ChargeGLints();
 
         glimac::Cylindre newCyl(glm::length(Pend - Pstart), 0.03f, 30, 30);
 
@@ -328,7 +328,7 @@ void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo)
         glDrawArrays(GL_TRIANGLES, 0, newCyl.getVertexCount());
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
-    //printf("\n\n");
+    printf("\n\n");
 }
 
 int main(int argc, char* argv[])
@@ -389,22 +389,15 @@ int main(int argc, char* argv[])
     circuit.push_back(glm::vec3(3.5, 2.5, 1));
     circuit.push_back(glm::vec3(3.5, 0.5, 1));
     circuit.push_back(glm::vec3(2.5, 0.5, 1));
-    circuit.push_back(glm::vec3(2, 0, 1));
-    circuit.push_back(glm::vec3(1, 0, 1));
-    circuit.push_back(glm::vec3(0, 0, 0));
+    circuit.push_back(glm::vec3(2.5, 0, 1));
+    circuit.push_back(glm::vec3(0, 0, 1));
     generalInfos->Circuit         = circuit;
-    generalInfos->NbCircuitPoints = 11;
+    generalInfos->NbCircuitPoints = 10;
 
-    for(int i = 0; i<generalInfos->NbCircuitPoints-1; i++){
+    for(int i = 0; i<generalInfos->NbCircuitPoints; i++){
         generalInfos->CircuitColors.push_back(glm::vec3(randomFloat(1.f), randomFloat(1.f), randomFloat(1.f)));
-
-        // couleurs pour les tests
-        if (i == 0) generalInfos->CircuitColors[0] = glm::vec3(1, 1, 1);
-        if (i == 1) generalInfos->CircuitColors[1] = glm::vec3(1, 0, 0);
-        if (i == 2) generalInfos->CircuitColors[2] = glm::vec3(0, 1, 0);
-        if (i == 3) generalInfos->CircuitColors[3] = glm::vec3(0, 0, 1);
     }
-    Material* earthMaterial = generalInfos->EarthMaterial;
+    Material* circuitMaterial = generalInfos->CircuitMaterial;
 
     // set ambiant light infos and charge in shaders
     generalInfos->AmbiantLight = glm::vec3(0.2, 0.2, 0.2);
@@ -425,11 +418,11 @@ int main(int argc, char* argv[])
     generalInfos->ChargeGLints();
 
     // set earth infos
-    earthMaterial->color = glm::vec3(1, 0, 0);
-    earthMaterial->specularIntensity = 1.f;
-    earthMaterial->shininess  = 30;
-    earthMaterial->hasTexture = false;
-    earthMaterial->isLamp = false;
+    circuitMaterial->color = glm::vec3(1, 0, 0);
+    circuitMaterial->specularIntensity = 1.f;
+    circuitMaterial->shininess         = 30;
+    circuitMaterial->hasTexture        = false;
+    circuitMaterial->isLamp            = false;
 
     /* CALCULATE MATRICES */
     glm::mat4 projMatrix     = glm::perspective(glm::radians(70.f), float(window_width) / float(window_height), 0.1f, 100.f);
@@ -513,7 +506,7 @@ int main(int argc, char* argv[])
         //glm::mat4 earthMVMatrix = generalInfos->globalMVMatrix; // glm::rotate(generalInfos->globalMVMatrix, (float)glfwGetTime(), glm::vec3(0, 1, 0)); // Translation * Rotation
 
         // send Matrixes values to shader
-        earthMaterial->ChargeMatrices(generalInfos->globalMVMatrix, generalInfos->projMatrix);
+        circuitMaterial->ChargeMatrices(generalInfos->globalMVMatrix, generalInfos->projMatrix);
 
         glBindVertexArray(vao);
 

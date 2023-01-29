@@ -9,6 +9,7 @@
 #include <glimac/Sphere.hpp>
 #include <glimac/Cone.hpp>
 #include <glimac/Cylindre.hpp>
+#include <glimac/LoadObject.hpp>
 #include <glimac/TrackballCamera.hpp>
 #include <glimac/common.hpp>
 #include <glimac/glm.hpp>
@@ -440,6 +441,13 @@ int main(int argc, char* argv[])
     // Création d'un cone
     glimac::Cone cone(1, 0.5, 30, 5);
 
+    //
+    // Lecture du wagon
+    std::vector< glm::vec3 > verticesWagon;
+    std::vector< glm::vec2 > uvsWagon;
+    std::vector< glm::vec3 > normalsWagon; // Won't be used at the moment.
+    bool res = loadOBJ("./assets/models/wagon.obj", verticesWagon, uvsWagon, normalsWagon);
+
     /* VBO + VAO */
     // création du VBO
     GLuint vbo;
@@ -544,6 +552,31 @@ int main(int argc, char* argv[])
         // glBufferData(GL_ARRAY_BUFFER, cone.getVertexCount() * sizeof(glimac::ShapeVertex), cone.getDataPointer(), GL_STATIC_DRAW);
         // //glDrawArrays(GL_TRIANGLES, 0, cone.getVertexCount());
         // glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+        // Dessin du wagon
+        GLuint vertexbuffer;
+        glGenBuffers(1, &vertexbuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
+        glBufferData(GL_ARRAY_BUFFER, verticesWagon.size() * sizeof(glm::vec3), &verticesWagon[0], GL_STATIC_DRAW);
+
+        GLuint uvbuffer;
+        glGenBuffers(1, &uvbuffer);
+        glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
+        glBufferData(GL_ARRAY_BUFFER, uvsWagon.size() * sizeof(glm::vec2), &uvsWagon[0], GL_STATIC_DRAW);
+
+        // on attribu le buffer : vertices
+        glEnableVertexAttribArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
+		glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,0,(void*)0);
+
+		// on attribu le buffer : UVs
+		glEnableVertexAttribArray(1);
+		glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
+		glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,0,(void*)0);
+
+		// Dessin du wagon
+		glDrawArrays(GL_TRIANGLES, 0, verticesWagon.size() );
+
 
         // Positionnement de la sphère représentant la lumière
         lightMVMatrix = glm::translate(lightMVMatrix, glm::vec3(lightPos));  // Translation * Rotation * Translation

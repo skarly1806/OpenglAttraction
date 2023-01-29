@@ -1,5 +1,6 @@
 # Blender 3.4.1 MTL File: 'wagon.blend'
 # www.blender.org
+<<<<<<< HEAD
 
 newmtl Matériau
 Ns 250.000000
@@ -10,3 +11,5 @@ Ke 0.000000 0.000000 0.000000
 Ni 1.450000
 d 1.000000
 illum 2
+=======
+>>>>>>> 2ddd4e16e6b6ef994ed6287df6fd7e76bc3f92a0

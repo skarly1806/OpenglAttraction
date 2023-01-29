@@ -36,11 +36,12 @@ uniform vec3 uViewPos; // position camera
 
 uniform Material uMaterial;
 
+// LIGHTS
 uniform DirLight[MAX_LIGHTS] uDirLights;
 
 uniform PointLight[MAX_LIGHTS] uPointLights;
 
-uniform vec2 NbLights; // x dir, y point
+uniform vec2 NbLights; // x dir lights, y point lights
 
 uniform vec3 uAmbiantLight;
 

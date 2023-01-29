@@ -11,10 +11,11 @@ class point():
 
 def main():
     pstart = point(0, 0, 0)
+    p = point(pstart.x, pstart.y, pstart.z)
     print(pstart)
     for i in range(10):
         l = 1
-        p = point(pstart.x, pstart.y, pstart.z)
+        p = point(p.x, p.y, p.z)
 
         v1 = random.random()
         p.x = p.x + v1

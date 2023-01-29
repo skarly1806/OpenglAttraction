@@ -292,6 +292,7 @@ void HandleEvents(GLFWwindow* window, glimac::TrackballCamera* camera)
 
 void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo, glimac::Cylindre cylindre)
 {
+    printf("new:\n");
     for (int i = 0; i < generalInfos->NbCircuitPoints - 1; i++) {
         generalInfos->EarthMaterial->color = generalInfos->CircuitColors[i];
 
@@ -307,9 +308,10 @@ void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo, glimac::Cylindre 
         else
             axis = glm::vec3(0, 1, 0);
 
-        printf("%f, %f %f %f\n", angle, axis.x, axis.y, axis.z);
+        printf("%f, %f %f %f, LEN : %f\n", angle, axis.x, axis.y, axis.z, glm::length(direction));
 
-        glm::mat4 circuitMVMatrix = glm::translate(generalInfos->globalMVMatrix, Pstart);
+        glm::mat4 circuitMVMatrix = generalInfos->globalMVMatrix;
+        circuitMVMatrix           = glm::translate(circuitMVMatrix, Pstart);
         circuitMVMatrix           = glm::rotate(circuitMVMatrix, angle, axis);
 
         generalInfos->EarthMaterial->ChargeMatrices(circuitMVMatrix, generalInfos->projMatrix);
@@ -320,6 +322,7 @@ void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo, glimac::Cylindre 
         glDrawArrays(GL_TRIANGLES, 0, cylindre.getVertexCount());
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
+    printf("\n\n");
 }
 
 int main(int argc, char* argv[])
@@ -373,18 +376,18 @@ int main(int argc, char* argv[])
 
     std::vector<glm::vec3> circuit ;
     circuit.push_back(glm::vec3(0.00f, 0.00f, 0.00f));
-    circuit.push_back(glm::vec3(0.61f, 0.34f, 0.05f));
-    circuit.push_back(glm::vec3(0.81f, 0.71f, -0.52f));
-    circuit.push_back(glm::vec3(0.63f, 0.86f, -0.49f));
-    circuit.push_back(glm::vec3(0.83f, 0.99f, -0.82f));
-    circuit.push_back(glm::vec3(0.16f, 0.23f, 0.61f));
-    circuit.push_back(glm::vec3(0.29f, 0.16f, 0.54f));
-    circuit.push_back(glm::vec3(0.66f, 0.35f, -0.01f));
-    circuit.push_back(glm::vec3(0.95f, 0.40f, -0.35f));
-    circuit.push_back(glm::vec3(0.56f, 0.29f, 0.15f));
-    circuit.push_back(glm::vec3(0.02f, 0.48f, 0.49f));
-    generalInfos->Circuit = circuit;
-    generalInfos->NbCircuitPoints = 10;
+    circuit.push_back(glm::vec3(0.10f, 0.03f, 0.88f));
+    circuit.push_back(glm::vec3(0.56f, 0.49f, 0.24f));
+    circuit.push_back(glm::vec3(0.90f, 0.69f, 1.08f));
+    circuit.push_back(glm::vec3(1.73f, 1.80f, 0.16f));
+    circuit.push_back(glm::vec3(2.40f, 2.20f, 1.60f));
+    circuit.push_back(glm::vec3(3.12f, 2.47f, 2.61f));
+    circuit.push_back(glm::vec3(3.57f, 3.68f, 3.12f));
+    circuit.push_back(glm::vec3(4.55f, 4.10f, 3.06f));
+    circuit.push_back(glm::vec3(4.82f, 5.36f, 4.49f));
+    circuit.push_back(glm::vec3(5.72f, 5.03f, 4.71f));
+    generalInfos->Circuit         = circuit;
+    generalInfos->NbCircuitPoints = 11;
 
     for(int i = 0; i<generalInfos->NbCircuitPoints-1; i++){
         generalInfos->CircuitColors.push_back(glm::vec3(randomFloat(1.f), randomFloat(1.f), randomFloat(1.f)));
@@ -433,7 +436,7 @@ int main(int argc, char* argv[])
     glimac::Sphere sphere(1, 64, 32);
 
     // Création d'un cylindre
-    glimac::Cylindre cylindre(1, .03, 30, 30);
+    glimac::Cylindre cylindre(1, .03, 5, 5);
 
     // Création d'un cone
     glimac::Cone cone(1, 0.5, 30, 5);

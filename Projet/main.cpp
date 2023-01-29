@@ -62,6 +62,14 @@ float randomFloat(float limit)
     return static_cast<float>(rand()) / static_cast<float>(RAND_MAX / limit);
 }
 
+struct Wagon {
+public:
+    std::vector<glm::vec3> verticesWagon;
+    std::vector<glm::vec2> uvsWagon;
+    std::vector<glm::vec3> normalsWagon;
+
+    Wagon(){}
+};
 
 struct Material {
 private:
@@ -236,8 +244,6 @@ public:
 
     glm::vec3 AmbiantLight = glm::vec3(0, 0, 0);
 
-    Material* CircuitMaterial;
-
     std::vector<Material*> MoonMaterials;
     int                    NbMoons;
 
@@ -249,7 +255,10 @@ public:
 
     std::vector<glm::vec3> Circuit;
     std::vector<glm::vec3> CircuitColors;
+    Material* CircuitMaterial;
     int NbCircuitPoints = 0;
+
+    Wagon* wagon;
 
     GeneralInfos(GLint prog_GLid)
     {
@@ -293,7 +302,7 @@ void HandleEvents(GLFWwindow* window, glimac::TrackballCamera* camera)
 
 void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo)
 {
-    printf("new:\n");
+    // printf("new:\n");
     for (int i = 0; i < generalInfos->NbCircuitPoints; i++) {
         generalInfos->CircuitMaterial->color = generalInfos->CircuitColors[i];
 
@@ -313,7 +322,7 @@ void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo)
             axis = glm::vec3(0, 1, 0); // on prend un axe qulconque a 90° de l'axe du cylindre (0,0,1)
         }
 
-        printf("Angle: %f, Axis:%f %f %f, LEN: %f, DIR: %f %f %f\n", angle, axis.x, axis.y, axis.z, glm::length(direction), direction.x, direction.y, direction.z);
+        // printf("Angle: %f, Axis:%f %f %f, LEN: %f, DIR: %f %f %f\n", angle, axis.x, axis.y, axis.z, glm::length(direction), direction.x, direction.y, direction.z);
 
         glm::mat4 circuitMVMatrix = generalInfos->globalMVMatrix;
         circuitMVMatrix           = glm::translate(circuitMVMatrix, Pstart);
@@ -329,7 +338,7 @@ void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo)
         glDrawArrays(GL_TRIANGLES, 0, newCyl.getVertexCount());
         glBindBuffer(GL_ARRAY_BUFFER, 0);
     }
-    printf("\n\n");
+    // printf("\n\n");
 }
 
 int main(int argc, char* argv[])
@@ -443,10 +452,12 @@ int main(int argc, char* argv[])
 
     //
     // Lecture du wagon
-    std::vector< glm::vec3 > verticesWagon;
-    std::vector< glm::vec2 > uvsWagon;
-    std::vector< glm::vec3 > normalsWagon; // Won't be used at the moment.
-    bool res = loadOBJ("./assets/models/wagon.obj", verticesWagon, uvsWagon, normalsWagon);
+    generalInfos->wagon = new Wagon();
+    bool res = loadOBJ("./assets/models/wagon.obj", generalInfos->wagon->verticesWagon, generalInfos->wagon->uvsWagon, generalInfos->wagon->normalsWagon);
+    if (!res) {
+        printf("ERROR while loading Wagon! \n");
+        exit(-1);
+    }
 
     /* VBO + VAO */
     // création du VBO
@@ -557,12 +568,12 @@ int main(int argc, char* argv[])
         GLuint vertexbuffer;
         glGenBuffers(1, &vertexbuffer);
         glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-        glBufferData(GL_ARRAY_BUFFER, verticesWagon.size() * sizeof(glm::vec3), &verticesWagon[0], GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, generalInfos->wagon->verticesWagon.size() * sizeof(glm::vec3), &(generalInfos->wagon->verticesWagon)[0], GL_STATIC_DRAW);
 
         GLuint uvbuffer;
         glGenBuffers(1, &uvbuffer);
         glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
-        glBufferData(GL_ARRAY_BUFFER, uvsWagon.size() * sizeof(glm::vec2), &uvsWagon[0], GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, generalInfos->wagon->uvsWagon.size() * sizeof(glm::vec2), &(generalInfos->wagon->uvsWagon)[0], GL_STATIC_DRAW);
 
         // on attribu le buffer : vertices
         glEnableVertexAttribArray(0);
@@ -575,8 +586,7 @@ int main(int argc, char* argv[])
 		glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,0,(void*)0);
 
 		// Dessin du wagon
-		glDrawArrays(GL_TRIANGLES, 0, verticesWagon.size() );
-
+        glDrawArrays(GL_TRIANGLES, 0, generalInfos->wagon->uvsWagon.size());
 
         // Positionnement de la sphère représentant la lumière
         lightMVMatrix = glm::translate(lightMVMatrix, glm::vec3(lightPos));  // Translation * Rotation * Translation

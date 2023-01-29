@@ -228,6 +228,9 @@ private:
     GLint NbLights_gl;
 
 public:
+    glm::mat4 globalMVMatrix;
+    glm::mat4 projMatrix;
+
     glm::vec3 ViewPos; // position camera
 
     glm::vec3 AmbiantLight = glm::vec3(0, 0, 0);
@@ -243,8 +246,9 @@ public:
 
     glm::vec2 NbLights = glm::vec2(0, 0);
 
-    // Material* Lampe;
-    // PointLight* uPointLight;
+    std::vector<glm::vec3> Circuit;
+    std::vector<glm::vec3> CircuitColors;
+    int NbCircuitPoints = 0;
 
     GeneralInfos(GLint prog_GLid)
     {
@@ -267,6 +271,56 @@ public:
     }
 };
 
+void HandleEvents(GLFWwindow* window, glimac::TrackballCamera* camera)
+{
+    double c_xpos, c_ypos;
+    glfwGetCursorPos(window, &c_xpos, &c_ypos);
+
+    camera->rotateUp(c_xpos);
+    camera->rotateLeft(c_ypos);
+
+    /* KEYBOARD */
+    int state = glfwGetKey(window, GLFW_KEY_W);
+    if (state == GLFW_PRESS) {
+        camera->moveFront(0.2f);
+    }
+    state = glfwGetKey(window, GLFW_KEY_S);
+    if (state == GLFW_PRESS) {
+        camera->moveFront(-0.2f);
+    }
+}
+
+void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo, glimac::Cylindre cylindre)
+{
+    for (int i = 0; i < generalInfos->NbCircuitPoints - 1; i++) {
+        generalInfos->EarthMaterial->color = generalInfos->CircuitColors[i];
+
+        glm::vec3 Pstart = generalInfos->Circuit[i];
+        glm::vec3 Pend = generalInfos->Circuit[i+1];
+        glm::vec3 direction = glm::normalize(Pend - Pstart);
+        glm::vec3 cylinderDirection = glm::vec3(0, 0, 1);
+
+        float angle = 180.f;
+        glm::vec3 axis = glm::cross(cylinderDirection, direction);
+        if (glm::length(axis) > 0.1f)
+            angle = glm::asin(glm::length(axis));
+        else
+            axis = glm::vec3(0, 1, 0);
+
+        printf("%f, %f %f %f\n", angle, axis.x, axis.y, axis.z);
+
+        glm::mat4 circuitMVMatrix = glm::translate(generalInfos->globalMVMatrix, Pstart);
+        circuitMVMatrix           = glm::rotate(circuitMVMatrix, angle, axis);
+
+        generalInfos->EarthMaterial->ChargeMatrices(circuitMVMatrix, generalInfos->projMatrix);
+        generalInfos->EarthMaterial->ChargeGLints();
+
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, cylindre.getVertexCount() * sizeof(glimac::ShapeVertex), cylindre.getDataPointer(), GL_STATIC_DRAW);
+        glDrawArrays(GL_TRIANGLES, 0, cylindre.getVertexCount());
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+    }
+}
 
 int main(int argc, char* argv[])
 {
@@ -314,8 +368,32 @@ int main(int argc, char* argv[])
     glEnable(GL_DEPTH_TEST); // Permet d'activer le test de profondeur du GPU
 
     /* CREATE ALL THINGS */
+
     GeneralInfos* generalInfos = new GeneralInfos(program.getGLId());
-    Material*     earthMaterial = generalInfos->EarthMaterial;
+
+    std::vector<glm::vec3> circuit ;
+    circuit.push_back(glm::vec3(0.00f, 0.00f, 0.00f));
+    circuit.push_back(glm::vec3(0.61f, 0.34f, 0.05f));
+    circuit.push_back(glm::vec3(0.81f, 0.71f, -0.52f));
+    circuit.push_back(glm::vec3(0.63f, 0.86f, -0.49f));
+    circuit.push_back(glm::vec3(0.83f, 0.99f, -0.82f));
+    circuit.push_back(glm::vec3(0.16f, 0.23f, 0.61f));
+    circuit.push_back(glm::vec3(0.29f, 0.16f, 0.54f));
+    circuit.push_back(glm::vec3(0.66f, 0.35f, -0.01f));
+    circuit.push_back(glm::vec3(0.95f, 0.40f, -0.35f));
+    circuit.push_back(glm::vec3(0.56f, 0.29f, 0.15f));
+    circuit.push_back(glm::vec3(0.02f, 0.48f, 0.49f));
+    generalInfos->Circuit = circuit;
+    generalInfos->NbCircuitPoints = 10;
+
+    for(int i = 0; i<generalInfos->NbCircuitPoints-1; i++){
+        generalInfos->CircuitColors.push_back(glm::vec3(randomFloat(1.f), randomFloat(1.f), randomFloat(1.f)));
+        if (i == 0) generalInfos->CircuitColors[0] = glm::vec3(1, 1, 1);
+        if (i == 1) generalInfos->CircuitColors[1] = glm::vec3(1, 0, 0);
+        if (i == 2) generalInfos->CircuitColors[2] = glm::vec3(0, 1, 0);
+        if (i == 3) generalInfos->CircuitColors[3] = glm::vec3(0, 0, 1);
+    }
+    Material* earthMaterial = generalInfos->EarthMaterial;
 
     // set ambiant light infos and charge in shaders
     generalInfos->AmbiantLight = glm::vec3(0.2, 0.2, 0.2);
@@ -336,7 +414,7 @@ int main(int argc, char* argv[])
     generalInfos->ChargeGLints();
 
     // set earth infos
-    earthMaterial->color         = glm::vec3(1, 0, 0);
+    earthMaterial->color = glm::vec3(1, 0, 0);
     earthMaterial->specularIntensity = 1.f;
     earthMaterial->shininess  = 30;
     earthMaterial->hasTexture = false;
@@ -346,11 +424,14 @@ int main(int argc, char* argv[])
     glm::mat4 projMatrix     = glm::perspective(glm::radians(70.f), float(window_width) / float(window_height), 0.1f, 100.f);
     glm::mat4 globalMVMatrix = glm::translate(glm::mat4(), glm::vec3(0, 0, -5));
 
+    generalInfos->projMatrix = projMatrix;
+    generalInfos->globalMVMatrix = globalMVMatrix;
+
     // Création d'une sphère
     glimac::Sphere sphere(1, 64, 32);
 
     // Création d'un cylindre
-    glimac::Cylindre cylindre(1, 0.5, 30, 30);
+    glimac::Cylindre cylindre(1, .03, 30, 30);
 
     // Création d'un cone
     glimac::Cone cone(1, 0.5, 30, 5);
@@ -395,33 +476,19 @@ int main(int argc, char* argv[])
     }
 
     /* CAMERA */
-    glimac::TrackballCamera camera;
+    glimac::TrackballCamera* camera = new glimac::TrackballCamera();
 
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window)) {
         /* EVENTS */
+        glfwPollEvents();
 
         /* MOUSE */
-        glfwPollEvents();
-        double c_xpos, c_ypos;
-        glfwGetCursorPos(window, &c_xpos, &c_ypos);
-
-        camera.rotateUp(c_xpos);
-        camera.rotateLeft(c_ypos);
-
-        /* KEYBOARD */
-        int state = glfwGetKey(window, GLFW_KEY_W);
-        if (state == GLFW_PRESS) {
-            camera.moveFront(0.2f);
-        }
-        state = glfwGetKey(window, GLFW_KEY_S);
-        if (state == GLFW_PRESS) {
-            camera.moveFront(-0.2f);
-        }
+        HandleEvents(window, camera);
 
         /* RENDERING */
 
-        glm::mat4 ViewMatrix  = camera.getViewMatrix();
+        glm::mat4 ViewMatrix  = camera->getViewMatrix();
         generalInfos->ViewPos = glm::vec3(ViewMatrix[0][0], ViewMatrix[0][1], ViewMatrix[0][2]);
         generalInfos->ChargeGLints();
 
@@ -429,13 +496,13 @@ int main(int argc, char* argv[])
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // get camera matrix
-        globalMVMatrix = ViewMatrix;
+        generalInfos->globalMVMatrix = ViewMatrix;
 
         // earth rotates on itself
-        glm::mat4 earthMVMatrix = glm::rotate(globalMVMatrix, (float)glfwGetTime(), glm::vec3(0, 1, 0)); // Translation * Rotation
+        //glm::mat4 earthMVMatrix = generalInfos->globalMVMatrix; // glm::rotate(generalInfos->globalMVMatrix, (float)glfwGetTime(), glm::vec3(0, 1, 0)); // Translation * Rotation
 
         // send Matrixes values to shader
-        earthMaterial->ChargeMatrices(earthMVMatrix, projMatrix);
+        earthMaterial->ChargeMatrices(generalInfos->globalMVMatrix, generalInfos->projMatrix);
 
         glBindVertexArray(vao);
 
@@ -444,26 +511,28 @@ int main(int argc, char* argv[])
         PointLight* currentLight = generalInfos->PointLights[0];
 
         glm::vec3 lightPos(currentLight->position.x, currentLight->position.y * (glm::cos((float)glfwGetTime()) * glm::sin((float)glfwGetTime())), currentLight->position.z); // position mouvement de spirale
-        glm::mat4 lightMVMatrix = glm::rotate(globalMVMatrix, (float)glfwGetTime(), glm::vec3(0, 1, 0));                                                                      // Translation * Rotation
+        glm::mat4 lightMVMatrix = glm::rotate(generalInfos->globalMVMatrix, (float)glfwGetTime(), glm::vec3(0, 1, 0));                                                        // Translation * Rotation
         glm::vec3 lightPos_vs(lightMVMatrix * glm::vec4(lightPos, 1));
 
         // /* CHARGEMENT LUMIERE */
         currentLight->ChargeGLints(lightPos_vs);
-        //printf("%f, %f %f %f\n", currentLight->intensity, currentLight->color.x, currentLight->color.y, currentLight->color.z);
+
+        /* GENERATION OF CIRCUIT */
+        CircuitGeneration(generalInfos, vbo, cylindre);
 
         /* CHARGEMENT MATERIAU TERRE */
-        earthMaterial->ChargeGLints();
+        //earthMaterial->ChargeGLints();
 
         // Dessin de la terre
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferData(GL_ARRAY_BUFFER, sphere.getVertexCount() * sizeof(glimac::ShapeVertex), sphere.getDataPointer(), GL_STATIC_DRAW);
-        glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
+        //glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         // Dessin du cylindre
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferData(GL_ARRAY_BUFFER, cylindre.getVertexCount() * sizeof(glimac::ShapeVertex), cylindre.getDataPointer(), GL_STATIC_DRAW);
-        // glDrawArrays(GL_TRIANGLES, 0, cylindre.getVertexCount());
+        //glDrawArrays(GL_TRIANGLES, 0, cylindre.getVertexCount());
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         // Dessin du cone
@@ -477,7 +546,7 @@ int main(int argc, char* argv[])
         lightMVMatrix = glm::scale(lightMVMatrix, glm::vec3(.04, .04, .04)); // Translation * Rotation * Translation * Scale
 
         myLamp = generalInfos->Lampes[0];
-        myLamp->ChargeMatrices(lightMVMatrix, projMatrix);
+        myLamp->ChargeMatrices(lightMVMatrix, generalInfos->projMatrix);
 
         /* CHARGEMENT DE LA LAMPE */
         myLamp->ChargeGLints();
@@ -492,11 +561,11 @@ int main(int argc, char* argv[])
 
         for (int i = 0; i < generalInfos->NbMoons; ++i) {
             // Transformations nécessaires pour la Lune
-            glm::mat4 moonMVMatrix = glm::rotate(globalMVMatrix, (1 + randomTransform[i][0] + randomTransform[i][1] + randomTransform[i][2]) * (float)glfwGetTime(), glm::cross(glm::vec3(1, 1, 1), randomTransform[i])); // Translation * Rotation
+            glm::mat4 moonMVMatrix = glm::rotate(generalInfos->globalMVMatrix, (1 + randomTransform[i][0] + randomTransform[i][1] + randomTransform[i][2]) * (float)glfwGetTime(), glm::cross(glm::vec3(1, 1, 1), randomTransform[i])); // Translation * Rotation
             moonMVMatrix           = glm::translate(moonMVMatrix, randomTransform[i]);                                                                                                                                    // Translation * Rotation * Translation
             moonMVMatrix           = glm::scale(moonMVMatrix, glm::vec3(0.2, 0.2, 0.2));                                                                                                                                  // Translation * Rotation * Translation * Scale
 
-            generalInfos->MoonMaterials[i]->ChargeMatrices(moonMVMatrix, projMatrix);
+            generalInfos->MoonMaterials[i]->ChargeMatrices(moonMVMatrix, generalInfos->projMatrix);
 
             // glUniform3f(uLightIntensity, .2, .2, .2);
             // glUniform3fv(uLightPos_vs, 1, glm::value_ptr(lightPos_vs));

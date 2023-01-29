@@ -251,7 +251,8 @@ public:
     Material* CircuitMaterial;
     int NbCircuitPoints = 0;
 
-    glimac::Geometry* wagon;
+    glimac::Geometry* Wagon;
+    Material*         WagonMaterial;
 
     GeneralInfos(GLint prog_GLid)
     {
@@ -264,6 +265,7 @@ public:
         AmbiantLight    = glm::vec3(0, 0, 0);
         NbMoons         = 0;
         CircuitMaterial = new Material(prog_GLid);
+        WagonMaterial   = new Material(prog_GLid);
     }
 
     void ChargeGLints()
@@ -401,6 +403,7 @@ int main(int argc, char* argv[])
         generalInfos->CircuitColors.push_back(glm::vec3(randomFloat(1.f), randomFloat(1.f), randomFloat(1.f)));
     }
     Material* circuitMaterial = generalInfos->CircuitMaterial;
+    Material* wagonMaterial   = generalInfos->WagonMaterial;
 
     // set ambiant light infos and charge in shaders
     generalInfos->AmbiantLight = glm::vec3(0.2, 0.2, 0.2);
@@ -420,12 +423,19 @@ int main(int argc, char* argv[])
 
     generalInfos->ChargeGLints();
 
-    // set earth infos
+    // set circuit  infos
     circuitMaterial->color = glm::vec3(1, 0, 0);
     circuitMaterial->specularIntensity = 1.f;
     circuitMaterial->shininess         = 30;
     circuitMaterial->hasTexture        = false;
     circuitMaterial->isLamp            = false;
+
+    // set wagon infos
+    wagonMaterial->color               = glm::vec3(1, 1, 0);
+    wagonMaterial->specularIntensity   = 1.f;
+    wagonMaterial->shininess           = 30;
+    wagonMaterial->hasTexture          = false;
+    wagonMaterial->isLamp              = false;
 
     /* CALCULATE MATRICES */
     glm::mat4 projMatrix     = glm::perspective(glm::radians(70.f), float(window_width) / float(window_height), 0.1f, 100.f);
@@ -444,11 +454,11 @@ int main(int argc, char* argv[])
     glimac::Cone cone(1, 0.5, 30, 5);
 
     //
-    // Lecture du wagon
-    generalInfos->wagon = new glimac::Geometry();
-    bool res = generalInfos->wagon->loadOBJ("./assets/models/wagon.obj", "./assets/models/wagon.mtl", false);
+    // Lecture du Wagon
+    generalInfos->Wagon = new glimac::Geometry();
+    bool res = generalInfos->Wagon->loadOBJ("./assets/models/Wagon.obj", "./assets/models/Wagon.mtl", false);
     if(!res){
-        printf("ERROR chargement du wagon! \n");
+        printf("ERROR chargement du Wagon! \n");
         exit(-1);
     }
 
@@ -460,7 +470,7 @@ int main(int argc, char* argv[])
     // GLuint ibo ;
     // glGenBuffers(1, &ibo);
     // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, generalInfos->wagon->getIndexCount() * sizeof(unsigned int), generalInfos->wagon->getIndexBuffer(), GL_STATIC_DRAW);
+    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, generalInfos->Wagon->getIndexCount() * sizeof(unsigned int), generalInfos->Wagon->getIndexBuffer(), GL_STATIC_DRAW);
     // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 
     // Création du VAO
@@ -565,16 +575,16 @@ int main(int argc, char* argv[])
         // //glDrawArrays(GL_TRIANGLES, 0, cone.getVertexCount());
         // glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-        // // Dessin du wagon
+        // // Dessin du Wagon
         // GLuint vertexbuffer;
         // glGenBuffers(1, &vertexbuffer);
         // glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-        // glBufferData(GL_ARRAY_BUFFER, generalInfos->wagon->verticesWagon.size() * sizeof(glm::vec3), &(generalInfos->wagon->verticesWagon)[0], GL_STATIC_DRAW);
+        // glBufferData(GL_ARRAY_BUFFER, generalInfos->Wagon->verticesWagon.size() * sizeof(glm::vec3), &(generalInfos->Wagon->verticesWagon)[0], GL_STATIC_DRAW);
 
         // GLuint uvbuffer;
         // glGenBuffers(1, &uvbuffer);
         // glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
-        // glBufferData(GL_ARRAY_BUFFER, generalInfos->wagon->uvsWagon.size() * sizeof(glm::vec2), &(generalInfos->wagon->uvsWagon)[0], GL_STATIC_DRAW);
+        // glBufferData(GL_ARRAY_BUFFER, generalInfos->Wagon->uvsWagon.size() * sizeof(glm::vec2), &(generalInfos->Wagon->uvsWagon)[0], GL_STATIC_DRAW);
 
         // // on attribu le buffer : vertices
         // glEnableVertexAttribArray(0);
@@ -586,11 +596,17 @@ int main(int argc, char* argv[])
 		// glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
 		// glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,0,(void*)0);
 
-		// Dessin du wagon
+		// Dessin du Wagon
+        glm::mat4 wagonMVMatrix = generalInfos->globalMVMatrix;
+        wagonMVMatrix = glm::rotate(generalInfos->globalMVMatrix, glm::radians(180.f), glm::vec3(1, 0, 0));
+        wagonMVMatrix = glm::scale(wagonMVMatrix, glm::vec3(0.2f));
+        wagonMaterial->ChargeMatrices(wagonMVMatrix, generalInfos->projMatrix);
+        wagonMaterial->ChargeGLints();
+
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, generalInfos->wagon->getVertexCount() * sizeof(unsigned int), generalInfos->wagon->getVertexBuffer(), GL_STATIC_DRAW);
-        glDrawElements(GL_TRIANGLES, generalInfos->wagon->getIndexCount(), GL_UNSIGNED_INT, generalInfos->wagon->getIndexBuffer());
-        // glDrawArrays(GL_TRIANGLES, 0, generalInfos->wagon->getVertexCount());
+        glBufferData(GL_ARRAY_BUFFER, generalInfos->Wagon->getVertexCount() * sizeof(unsigned int), generalInfos->Wagon->getVertexBuffer(), GL_STATIC_DRAW);
+        glDrawElements(GL_TRIANGLES, generalInfos->Wagon->getIndexCount(), GL_UNSIGNED_INT, generalInfos->Wagon->getIndexBuffer());
+        // glDrawArrays(GL_TRIANGLES, 0, generalInfos->Wagon->getVertexCount());
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         // Positionnement de la sphère représentant la lumière

@@ -388,6 +388,8 @@ int main(int argc, char* argv[])
 
     for(int i = 0; i<generalInfos->NbCircuitPoints-1; i++){
         generalInfos->CircuitColors.push_back(glm::vec3(randomFloat(1.f), randomFloat(1.f), randomFloat(1.f)));
+
+        // couleurs pour les tests
         if (i == 0) generalInfos->CircuitColors[0] = glm::vec3(1, 1, 1);
         if (i == 1) generalInfos->CircuitColors[1] = glm::vec3(1, 0, 0);
         if (i == 2) generalInfos->CircuitColors[2] = glm::vec3(0, 1, 0);

@@ -102,6 +102,11 @@ vec3 CalcPointLight(PointLight light) {
 void main() {
 	vec3 result = vec3(1);
 
+	vec3 colorMat = uMaterial.color;
+	if(uMaterial.hasTexture){
+		colorMat = texture(uMaterial.textures[0], vTexCoords).rgb + texture(uMaterial.textures[1], vTexCoords).rgb;
+	}
+
 	if(!uMaterial.isLamp){
 		result = uAmbiantLight;
 
@@ -112,6 +117,6 @@ void main() {
 			result += CalcPointLight(uPointLights[i]);
 	}
 
-	fFragColor = result * uMaterial.color;
+	fFragColor = result * colorMat;
 
 };

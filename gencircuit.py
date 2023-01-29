@@ -22,10 +22,10 @@ def main():
         l = l - v1
 
         v2 = random.random()
-        p.y = p.y + v2
+        p.z = p.z + v2
         l = l - v2
 
-        p.z = p.z + l
+        p.y = p.y + l
 
         print(p)
 

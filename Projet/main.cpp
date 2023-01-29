@@ -376,16 +376,16 @@ int main(int argc, char* argv[])
 
     std::vector<glm::vec3> circuit ;
     circuit.push_back(glm::vec3(0.00f, 0.00f, 0.00f));
-    circuit.push_back(glm::vec3(0.10f, 0.03f, 0.88f));
-    circuit.push_back(glm::vec3(0.56f, 0.49f, 0.24f));
-    circuit.push_back(glm::vec3(0.90f, 0.69f, 1.08f));
-    circuit.push_back(glm::vec3(1.73f, 1.80f, 0.16f));
-    circuit.push_back(glm::vec3(2.40f, 2.20f, 1.60f));
-    circuit.push_back(glm::vec3(3.12f, 2.47f, 2.61f));
-    circuit.push_back(glm::vec3(3.57f, 3.68f, 3.12f));
-    circuit.push_back(glm::vec3(4.55f, 4.10f, 3.06f));
-    circuit.push_back(glm::vec3(4.82f, 5.36f, 4.49f));
-    circuit.push_back(glm::vec3(5.72f, 5.03f, 4.71f));
+    circuit.push_back(glm::vec3(0.55f, 0.30f, 0.15f));
+    circuit.push_back(glm::vec3(1.33f, 0.52f, 0.81f));
+    circuit.push_back(glm::vec3(2.11f, 0.91f, 1.96f));
+    circuit.push_back(glm::vec3(2.39f, 2.52f, 2.41f));
+    circuit.push_back(glm::vec3(3.35f, 1.83f, 2.98f));
+    circuit.push_back(glm::vec3(3.76f, 3.71f, 3.58f));
+    circuit.push_back(glm::vec3(4.22f, 4.00f, 4.06f));
+    circuit.push_back(glm::vec3(5.15f, 3.47f, 5.05f));
+    circuit.push_back(glm::vec3(5.42f, 5.18f, 5.86f));
+    circuit.push_back(glm::vec3(5.45f, 5.50f, 6.29f));
     generalInfos->Circuit         = circuit;
     generalInfos->NbCircuitPoints = 11;
 

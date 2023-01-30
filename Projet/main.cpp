@@ -73,7 +73,7 @@ public:
     bool       hasTexture;
     bool       isLamp;
 
-    std::unique_ptr<glimac::Image>* uTextures;
+    glimac::Image** uTextures;
 
 
     Material(){}
@@ -93,7 +93,7 @@ public:
 
         // Textures
         uTextures_gl = (GLuint*)calloc(MAX_TEXTURES, sizeof(GLuint));
-        uTextures    = (std::unique_ptr<glimac::Image>*)calloc(MAX_TEXTURES, sizeof(std::unique_ptr<glimac::Image>));
+        uTextures    = (glimac::Image**)calloc(MAX_TEXTURES, sizeof(glimac::Image*));
 
         for (int i = 0; i < MAX_TEXTURES; i++) {
             char varname[50] = "";
@@ -354,6 +354,13 @@ public:
         NbMoons         = 0;
 
         floor    = new Rectangle(prog_GLid, 20.f, 20.f, glm::vec3(0, 1, 0));
+        //chargement texture
+        std::unique_ptr<glimac::Image> Herbe=glimac::loadImage("./assets/textures/herbe.jpg");
+        if(Herbe == NULL){
+            std::cerr << "Une des textures n'a pas pu etre chargée. \n" << std::endl;
+            exit(0);
+        }
+        floor->material->uTextures[0]=Herbe.get();
         circuit  = new Circuit(prog_GLid);
         wagon = new Wagon(prog_GLid);
 
@@ -694,19 +701,8 @@ int main(int argc, char* argv[])
     // Débinding du VAO
     glBindVertexArray(0);
 
-    //chargement texture
-    std::unique_ptr<glimac::Image> Herbe=glimac::loadImage("./assets/textures/herbe.jpg");
-    if(Herbe == NULL){
-        std::cerr << "Une des textures n'a pas pu etre chargée. \n" << std::endl;
-        exit(0);
-    }
-    GLint uTexture = glGetUniformLocation(program.getGLId(), "uTexture");
-    GLuint texture;
-    glGenTextures(1,&texture);
-    glBindTexture(GL_TEXTURE_2D,texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glBindTexture(GL_TEXTURE_2D,0);
+    
+
 
     /* GENERATE MOONS */
     generalInfos->NbMoons = 0;
@@ -762,11 +758,8 @@ int main(int argc, char* argv[])
         CircuitGeneration(generalInfos, vbo, cylindre);
 
         // Dessin du sol
-        glBindTexture(GL_TEXTURE_2D, texture);
-        glUniform1i(uTexture, 0);
-        glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,Herbe->getWidth(),Herbe->getHeight(),0,GL_RGBA,GL_FLOAT,Herbe->getPixels());
         DrawFloor(generalInfos, vbo);
-        glBindTexture(GL_TEXTURE_2D, 0);
+
 
         // Dessin du Wagon
         DrawWagon(generalInfos, vbo);

@@ -33,6 +33,10 @@ namespace glimac {
             return m_fDistance;
         }
 
+        void setDistance(float delta){
+            m_fDistance = delta;
+        }
+
         /// @brief Permet d'avancer / reculer la caméra de la distance delta (delta positif avance la camera)
         /// @param delta
         void moveFront(float delta)

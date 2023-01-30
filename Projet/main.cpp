@@ -332,6 +332,14 @@ public:
     Rectangle*  floor;
 
     glimac::TrackballCamera* camera;
+    float cameraMinDist = 0.2f;
+    float cameraMaxDist = 20.f;
+    float cameraDistIncrement = 0.2f;
+    float cameraMinDegAngle = 0.1f;
+    float cameraMaxDegAngle = 89.9f;
+    float sensitivity = 0.8f;
+    double previous_x;
+    double previous_y;
 
     GeneralInfos(GLint prog_GLid)
     {
@@ -362,19 +370,43 @@ public:
 void HandleEvents(GLFWwindow* window, GeneralInfos* generalInfos)
 {
     glfwPollEvents();
+
+    /* MOUSE */
     double c_xpos, c_ypos;
     glfwGetCursorPos(window, &c_xpos, &c_ypos);
+    double d_y = c_ypos - generalInfos->previous_y;
+    double d_x = c_xpos - generalInfos->previous_x;
 
-    generalInfos->camera->rotateUp(c_xpos);
-    generalInfos->camera->rotateLeft(c_ypos);
+    generalInfos->previous_x = c_xpos;
+    generalInfos->previous_y = c_ypos;
+
+    float rotationX = d_y * generalInfos->sensitivity + glm::degrees(generalInfos->camera->getAngleX());
+    float rotationY = d_x * generalInfos->sensitivity + glm::degrees(generalInfos->camera->getAngleY());
+
+    if (rotationX > generalInfos->cameraMaxDegAngle)
+        rotationX = generalInfos->cameraMaxDegAngle;
+    if (rotationX < generalInfos->cameraMinDegAngle)
+        rotationX = generalInfos->cameraMinDegAngle;
+
+    printf("X: %f, Y: %f\n", rotationX, rotationY); fflush(stdout);
+
+    generalInfos->camera->rotateLeft(rotationX);
+    generalInfos->camera->rotateUp(rotationY);
+
 
     /* KEYBOARD */
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-        generalInfos->camera->moveFront(0.2f);
+        if(generalInfos->camera->getDistance() - generalInfos->cameraDistIncrement > generalInfos->cameraMinDist)
+            generalInfos->camera->moveFront(generalInfos->cameraDistIncrement);
+        else
+            generalInfos->camera->setDistance(generalInfos->cameraMinDist);
     }
 
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-        generalInfos->camera->moveFront(-0.2f);
+        if (generalInfos->camera->getDistance() + generalInfos->cameraDistIncrement < generalInfos->cameraMaxDist)
+            generalInfos->camera->moveFront(-generalInfos->cameraDistIncrement);
+        else
+            generalInfos->camera->setDistance(generalInfos->cameraMaxDist);
     }
 
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
@@ -391,7 +423,7 @@ void HandleEvents(GLFWwindow* window, GeneralInfos* generalInfos)
             printf("Switched isActif to %d\n", generalInfos->wagon->isActif);
         }
     }
-}
+    }
 
 void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo, glimac::Cylindre cylindre)
 {
@@ -445,10 +477,10 @@ void DrawWagon(GeneralInfos* generalInfos, GLuint vbo){
 
         //gestion vitesse
         if(direction.y > 0.f){
-            wagon->speed = (wagon->speed > wagon->minSpeed) ? wagon->speed - 0.01f : wagon->minSpeed;
+            wagon->speed = (wagon->speed - 0.01f > wagon->minSpeed) ? wagon->speed - 0.01f : wagon->minSpeed;
         }
         else if(direction.y < 0.f){
-            wagon->speed = (wagon->speed < wagon->maxSpeed) ? wagon->speed + 0.02f : wagon->maxSpeed;
+            wagon->speed = (wagon->speed + 0.02f < wagon->maxSpeed) ? wagon->speed + 0.02f : wagon->maxSpeed;
         }
 
         // gestion position sur le circuit + déplacement

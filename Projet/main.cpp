@@ -227,8 +227,32 @@ public:
     std::vector<glm::vec3> CircuitColors;
     Material*              CircuitMaterial;
     int                    NbCircuitPoints = 0;
+
+    Circuit(GLint prog_GLid)
+    {
+        CircuitMaterial = new Material(prog_GLid);
+    }
 };
 
+struct Wagon{
+public:
+    glimac::Geometry* WagonObject;
+    Material*         WagonMaterial;
+    //bool isActif;
+
+    Wagon(GLint prog_GLid)
+    {
+        WagonObject = new glimac::Geometry();
+        bool res    = WagonObject->loadOBJ("./assets/models/Wagon.obj", "./assets/models/Wagon.mtl", false);
+        if (!res) {
+            printf("ERROR chargement du Wagon! \n");
+            exit(-1);
+        }
+        WagonMaterial = new Material(prog_GLid);
+        //bool isActif = false;
+    }
+
+};
 
 struct GeneralInfos {
 private:
@@ -256,8 +280,7 @@ public:
 
     Circuit* circuit;
 
-    glimac::Geometry* Wagon;
-    Material*         WagonMaterial;
+    Wagon*   wagon;
 
     GeneralInfos(GLint prog_GLid)
     {
@@ -270,10 +293,9 @@ public:
         AmbiantLight    = glm::vec3(0, 0, 0);
         NbMoons         = 0;
 
-        circuit = new Circuit();
-        circuit->CircuitMaterial = new Material(prog_GLid);
+        circuit  = new Circuit(prog_GLid);
+        wagon = new Wagon(prog_GLid);
 
-        WagonMaterial   = new Material(prog_GLid);
     }
 
     void ChargeGLints()
@@ -389,28 +411,10 @@ int main(int argc, char* argv[])
 
     /* CREATE ALL THINGS */
 
+    // infos générales
     GeneralInfos* generalInfos = new GeneralInfos(program.getGLId());
 
-    std::vector<glm::vec3> circuit ;
-    circuit.push_back(glm::vec3(0, 0, 0));
-    circuit.push_back(glm::vec3(2, 0, 0));
-    circuit.push_back(glm::vec3(2.5, 0.5, 0));
-    circuit.push_back(glm::vec3(3.5, 0.5, 0));
-    circuit.push_back(glm::vec3(5.5, 2.5, 0));
-    circuit.push_back(glm::vec3(5.5, 2.5, 1));
-    circuit.push_back(glm::vec3(3.5, 0.5, 1));
-    circuit.push_back(glm::vec3(2.5, 0.5, 1));
-    circuit.push_back(glm::vec3(1.5, 0, 1));
-    circuit.push_back(glm::vec3(0, 0, 1));
-    generalInfos->circuit->CircuitParts   = circuit;
-    generalInfos->circuit->NbCircuitPoints  = 10;
-
-    for(int i = 0; i<generalInfos->circuit->NbCircuitPoints; i++){
-        generalInfos->circuit->CircuitColors.push_back(glm::vec3(randomFloat(1.f), randomFloat(1.f), randomFloat(1.f)));
-    }
-    Material* circuitMaterial = generalInfos->circuit->CircuitMaterial;
-    Material* wagonMaterial   = generalInfos->WagonMaterial;
-
+    // les lumieres
     // set ambiant light infos and charge in shaders
     generalInfos->AmbiantLight = glm::vec3(0.2, 0.2, 0.2);
 
@@ -430,13 +434,33 @@ int main(int argc, char* argv[])
     generalInfos->ChargeGLints();
 
     // set circuit  infos
-    circuitMaterial->color = glm::vec3(1, 0, 0);
+    std::vector<glm::vec3> circuit;
+    circuit.push_back(glm::vec3(0, 0, 0));
+    circuit.push_back(glm::vec3(2, 0, 0));
+    circuit.push_back(glm::vec3(2.5, 0.5, 0));
+    circuit.push_back(glm::vec3(3.5, 0.5, 0));
+    circuit.push_back(glm::vec3(5.5, 2.5, 0));
+    circuit.push_back(glm::vec3(5.5, 2.5, 1));
+    circuit.push_back(glm::vec3(3.5, 0.5, 1));
+    circuit.push_back(glm::vec3(2.5, 0.5, 1));
+    circuit.push_back(glm::vec3(1.5, 0, 1));
+    circuit.push_back(glm::vec3(0, 0, 1));
+    generalInfos->circuit->CircuitParts    = circuit;
+    generalInfos->circuit->NbCircuitPoints = 10;
+
+    for (int i = 0; i < generalInfos->circuit->NbCircuitPoints; i++) {
+        generalInfos->circuit->CircuitColors.push_back(glm::vec3(randomFloat(1.f), randomFloat(1.f), randomFloat(1.f)));
+    }
+
+    Material* circuitMaterial          = generalInfos->circuit->CircuitMaterial;
+    circuitMaterial->color             = glm::vec3(1, 0, 0);
     circuitMaterial->specularIntensity = 1.f;
     circuitMaterial->shininess         = 30;
     circuitMaterial->hasTexture        = false;
     circuitMaterial->isLamp            = false;
 
     // set wagon infos
+    Material* wagonMaterial            = generalInfos->wagon->WagonMaterial;
     wagonMaterial->color               = glm::vec3(1, 1, 0);
     wagonMaterial->specularIntensity   = 1.f;
     wagonMaterial->shininess           = 30;
@@ -458,15 +482,6 @@ int main(int argc, char* argv[])
 
     // Création d'un cone
     glimac::Cone cone(1, 0.5, 30, 5);
-
-    //
-    // Lecture du Wagon
-    generalInfos->Wagon = new glimac::Geometry();
-    bool res = generalInfos->Wagon->loadOBJ("./assets/models/Wagon.obj", "./assets/models/Wagon.mtl", false);
-    if(!res){
-        printf("ERROR chargement du Wagon! \n");
-        exit(-1);
-    }
 
     /* VBO + VAO */
     // création du VBO
@@ -563,14 +578,13 @@ int main(int argc, char* argv[])
 
 		// Dessin du Wagon
         glm::mat4 wagonMVMatrix = generalInfos->globalMVMatrix;
-        wagonMVMatrix = glm::rotate(generalInfos->globalMVMatrix, glm::radians(180.f), glm::vec3(1, 0, 0));
-        wagonMVMatrix = glm::scale(wagonMVMatrix, glm::vec3(0.2f));
-        wagonMaterial->ChargeMatrices(wagonMVMatrix, generalInfos->projMatrix);
-        wagonMaterial->ChargeGLints();
+        wagonMVMatrix = glm::scale(wagonMVMatrix, glm::vec3(0.1f));
+        generalInfos->wagon->WagonMaterial->ChargeMatrices(wagonMVMatrix, generalInfos->projMatrix);
+        generalInfos->wagon->WagonMaterial->ChargeGLints();
 
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, generalInfos->Wagon->getVertexCount() * sizeof(unsigned int), generalInfos->Wagon->getVertexBuffer(), GL_STATIC_DRAW);
-        glDrawElements(GL_TRIANGLES, generalInfos->Wagon->getIndexCount(), GL_UNSIGNED_INT, generalInfos->Wagon->getIndexBuffer());
+        glBufferData(GL_ARRAY_BUFFER, generalInfos->wagon->WagonObject->getVertexCount() * sizeof(unsigned int), generalInfos->wagon->WagonObject->getVertexBuffer(), GL_STATIC_DRAW);
+        glDrawElements(GL_TRIANGLES, generalInfos->wagon->WagonObject->getIndexCount(), GL_UNSIGNED_INT, generalInfos->wagon->WagonObject->getIndexBuffer());
         // glDrawArrays(GL_TRIANGLES, 0, generalInfos->Wagon->getVertexCount());
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 

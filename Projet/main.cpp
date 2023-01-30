@@ -238,7 +238,13 @@ struct Wagon{
 public:
     glimac::Geometry* WagonObject;
     Material*         WagonMaterial;
-    //bool isActif;
+    bool isActif;
+    glm::vec3 Position;
+    int indexPos;
+
+    float speed;
+    float minSpeed;
+    float maxSpeed;
 
     Wagon(GLint prog_GLid)
     {
@@ -249,7 +255,20 @@ public:
             exit(-1);
         }
         WagonMaterial = new Material(prog_GLid);
-        //bool isActif = false;
+        isActif = false;
+        indexPos = 0;
+
+        speed = 0.f;
+        minSpeed = 0.1f;
+        maxSpeed = 0.5f;
+
+        Position = glm::vec3(0, 0, 0);
+    }
+
+    void ResetState(){
+        //isActif  = false;
+        indexPos = 0;
+        speed   = 0.f;
     }
 
 };
@@ -282,6 +301,8 @@ public:
 
     Wagon*   wagon;
 
+    glimac::TrackballCamera* camera;
+
     GeneralInfos(GLint prog_GLid)
     {
         AmbiantLight_gl = glGetUniformLocation(prog_GLid, "uAmbiantLight");
@@ -295,7 +316,7 @@ public:
 
         circuit  = new Circuit(prog_GLid);
         wagon = new Wagon(prog_GLid);
-
+        camera = new glimac::TrackballCamera();
     }
 
     void ChargeGLints()
@@ -306,22 +327,28 @@ public:
     }
 };
 
-void HandleEvents(GLFWwindow* window, glimac::TrackballCamera* camera)
+void HandleEvents(GLFWwindow* window, GeneralInfos* generalInfos)
 {
     double c_xpos, c_ypos;
     glfwGetCursorPos(window, &c_xpos, &c_ypos);
 
-    camera->rotateUp(c_xpos);
-    camera->rotateLeft(c_ypos);
+    generalInfos->camera->rotateUp(c_xpos);
+    generalInfos->camera->rotateLeft(c_ypos);
 
     /* KEYBOARD */
-    int state = glfwGetKey(window, GLFW_KEY_W);
-    if (state == GLFW_PRESS) {
-        camera->moveFront(0.2f);
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+        generalInfos->camera->moveFront(0.2f);
     }
-    state = glfwGetKey(window, GLFW_KEY_S);
-    if (state == GLFW_PRESS) {
-        camera->moveFront(-0.2f);
+
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+        generalInfos->camera->moveFront(-0.2f);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
+        generalInfos->wagon->isActif = !generalInfos->wagon->isActif;
+        if (!generalInfos->wagon->isActif){
+            generalInfos->wagon->ResetState();
+        }
     }
 }
 
@@ -361,6 +388,49 @@ void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo, glimac::Cylindre 
 
         glDrawArrays(GL_TRIANGLES, 0, cylindre.getVertexCount());
     }
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+void DrawWagon(GeneralInfos* generalInfos, GLuint vbo){
+    Wagon* wagon = generalInfos->wagon;
+    Circuit* circuit = generalInfos->circuit;
+
+    if(wagon->isActif){
+        glm::vec3 Pstart = circuit->CircuitParts[wagon->indexPos];
+        glm::vec3 Pend   = (wagon->indexPos == circuit->NbCircuitPoints - 1) ? circuit->CircuitParts[0] : circuit->CircuitParts[wagon->indexPos + 1];
+        glm::vec3 direction = glm::normalize(Pend - Pstart);
+
+        if(glm::length(wagon->Position - Pend)>0.f) // si pas arrivé a la fin
+        {
+            float lengthToAdd = wagon->speed;
+            // glm::vec3 totalLengthVector = wagon->speed * direction;
+            // // round the length vector
+            // glm::vec3 lengthVector = glm::vec3(std::ceil(totalLengthVector.x * 100.0) / 100.0, std::ceil(totalLengthVector.y * 100.0) / 100.0, std::ceil(totalLengthVector.z * 100.0) / 100.0);
+
+            while (glm::length(glm::vec3(0, 0, 0) - lengthToAdd * direction) > 0.0f && glm::length(wagon->Position - Pend) > 0.02f) {
+                wagon->Position += 0.01f * direction; // add a bit of length in direction
+                lengthToAdd -= 0.01f; // remove a bit of the length
+
+                if (glm::length(wagon->Position - Pend) <= 0.f){ // if arrived to destination, change destination
+                    wagon->indexPos     = (wagon->indexPos == circuit->NbCircuitPoints - 1) ? 0 : wagon->indexPos + 1;
+                    Pstart    = circuit->CircuitParts[wagon->indexPos];
+                    Pend      = (wagon->indexPos == circuit->NbCircuitPoints - 1) ? circuit->CircuitParts[0] : circuit->CircuitParts[wagon->indexPos + 1];
+                    direction = glm::normalize(Pend - Pstart);
+                }
+            }
+        }
+    }
+    glm::mat4 wagonMVMatrix = generalInfos->globalMVMatrix;
+    wagonMVMatrix           = glm::translate(wagonMVMatrix, wagon->Position);
+    wagonMVMatrix           = glm::scale(wagonMVMatrix, glm::vec3(0.1f));
+
+    wagon->WagonMaterial->ChargeMatrices(wagonMVMatrix, generalInfos->projMatrix);
+    wagon->WagonMaterial->ChargeGLints();
+    //printf("%d\n", wagon->isActif);
+
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, wagon->WagonObject->getVertexCount() * sizeof(unsigned int), wagon->WagonObject->getVertexBuffer(), GL_STATIC_DRAW);
+    glDrawElements(GL_TRIANGLES, wagon->WagonObject->getIndexCount(), GL_UNSIGNED_INT, wagon->WagonObject->getIndexBuffer());
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
@@ -530,20 +600,17 @@ int main(int argc, char* argv[])
         generalInfos->MoonMaterials.push_back(new_moon);
     }
 
-    /* CAMERA */
-    glimac::TrackballCamera* camera = new glimac::TrackballCamera();
-
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window)) {
         /* EVENTS */
         glfwPollEvents();
 
         /* MOUSE */
-        HandleEvents(window, camera);
+        HandleEvents(window, generalInfos);
 
         /* RENDERING */
 
-        glm::mat4 ViewMatrix  = camera->getViewMatrix();
+        glm::mat4 ViewMatrix  = generalInfos->camera->getViewMatrix();
         generalInfos->ViewPos = glm::vec3(ViewMatrix[0][0], ViewMatrix[0][1], ViewMatrix[0][2]);
         generalInfos->ChargeGLints();
 
@@ -577,16 +644,7 @@ int main(int argc, char* argv[])
 
 
 		// Dessin du Wagon
-        glm::mat4 wagonMVMatrix = generalInfos->globalMVMatrix;
-        wagonMVMatrix = glm::scale(wagonMVMatrix, glm::vec3(0.1f));
-        generalInfos->wagon->WagonMaterial->ChargeMatrices(wagonMVMatrix, generalInfos->projMatrix);
-        generalInfos->wagon->WagonMaterial->ChargeGLints();
-
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, generalInfos->wagon->WagonObject->getVertexCount() * sizeof(unsigned int), generalInfos->wagon->WagonObject->getVertexBuffer(), GL_STATIC_DRAW);
-        glDrawElements(GL_TRIANGLES, generalInfos->wagon->WagonObject->getIndexCount(), GL_UNSIGNED_INT, generalInfos->wagon->WagonObject->getIndexBuffer());
-        // glDrawArrays(GL_TRIANGLES, 0, generalInfos->Wagon->getVertexCount());
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        DrawWagon(generalInfos, vbo);
 
         // Positionnement de la sphère représentant la lumière
         lightMVMatrix = glm::translate(lightMVMatrix, glm::vec3(lightPos));  // Translation * Rotation * Translation

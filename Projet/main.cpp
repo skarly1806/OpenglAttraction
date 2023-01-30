@@ -366,10 +366,6 @@ public:
 
         //chargement texture
         floor->material->uTextures[0] = glimac::loadImage(applicationPath.dirPath() + "./assets/textures/herbe.jpg");
-        if (floor->material->uTextures[0] == NULL) {
-            std::cerr << "Une des textures n'a pas pu etre chargée. \n" << std::endl;
-            exit(0);
-        }
         floor->material->hasTexture   = true;
         floor->material->NbTextures   = 1;
         circuit  = new Circuit(prog_GLid);
@@ -610,6 +606,7 @@ int main(int argc, char* argv[])
     program.use();
 
     glEnable(GL_DEPTH_TEST); // Permet d'activer le test de profondeur du GPU
+    glEnable(GL_TEXTURE_2D);
 
     /* CREATE ALL THINGS */
 
@@ -700,13 +697,16 @@ int main(int argc, char* argv[])
     glBindVertexArray(vao);
     const GLint VERTEX_ATTR_POSITION = 0;
     const GLint VERTEX_ATTR_NORMAL   = 1;
+    const GLint VERTEX_ATTR_TEXCOORDS   = 2;
     glEnableVertexAttribArray(VERTEX_ATTR_POSITION);
     glEnableVertexAttribArray(VERTEX_ATTR_NORMAL);
+    glEnableVertexAttribArray(VERTEX_ATTR_TEXCOORDS);
 
     // Spécification de l'attribut de sommet et de normal
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glVertexAttribPointer(VERTEX_ATTR_POSITION, 3, GL_FLOAT, GL_FALSE, sizeof(glimac::ShapeVertex), (const GLvoid*)offsetof(glimac::ShapeVertex, position));
     glVertexAttribPointer(VERTEX_ATTR_NORMAL, 3, GL_FLOAT, GL_FALSE, sizeof(glimac::ShapeVertex), (const GLvoid*)offsetof(glimac::ShapeVertex, normal));
+    glVertexAttribPointer(VERTEX_ATTR_TEXCOORDS, 2, GL_FLOAT, GL_FALSE, sizeof(glimac::ShapeVertex), (const GLvoid*)offsetof(glimac::ShapeVertex, texCoords));
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 
     // Débinding du VAO

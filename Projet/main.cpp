@@ -405,13 +405,17 @@ void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo, glimac::Cylindre 
 }
 
 void DrawWagon(GeneralInfos* generalInfos, GLuint vbo){
+    // préparations
     Wagon* wagon = generalInfos->wagon;
     Circuit* circuit = generalInfos->circuit;
     glm::vec3 Pstart    = circuit->CircuitParts[wagon->indexPos];
     glm::vec3 Pend      = (wagon->indexPos == circuit->NbCircuitPoints - 1) ? circuit->CircuitParts[0] : circuit->CircuitParts[wagon->indexPos + 1];
     glm::vec3 direction = glm::normalize(Pend - Pstart);
 
+    // si wagon non actif, pas de mouvement
     if(wagon->isActif){
+
+        //gestion vitesse
         if(direction.y > 0.f){
             wagon->speed = (wagon->speed > wagon->minSpeed) ? wagon->speed - 0.01f : wagon->minSpeed;
         }
@@ -419,6 +423,7 @@ void DrawWagon(GeneralInfos* generalInfos, GLuint vbo){
             wagon->speed = (wagon->speed < wagon->maxSpeed) ? wagon->speed + 0.02f : wagon->maxSpeed;
         }
 
+        // gestion position sur le circuit + déplacement
         float my_time = (float)glfwGetTime() - wagon->timeSinceSwitchingIndex;
         float lengthToMove = wagon->speed * my_time;
 
@@ -434,6 +439,7 @@ void DrawWagon(GeneralInfos* generalInfos, GLuint vbo){
         wagon->Position = circuit->CircuitParts[0];
     }
 
+    // gestion direction du wagon
     glm::vec3 wagonDirection = glm::vec3(1, 0, 0);
     float     angle = glm::radians(180.f); // set a 180 au cas ou parallele et opposés
     glm::vec3 axis  = glm::cross(wagonDirection, direction);
@@ -446,16 +452,18 @@ void DrawWagon(GeneralInfos* generalInfos, GLuint vbo){
         axis = glm::vec3(0, 1, 0); // on prend un axe qulconque a 90° de l'axe du wagon
     }
 
+    // matrice de mouvement
     glm::mat4 wagonMVMatrix = generalInfos->globalMVMatrix;
     wagonMVMatrix           = glm::translate(wagonMVMatrix, wagon->Position);
     wagonMVMatrix           = glm::rotate(wagonMVMatrix, angle, axis); // rotate towards end
     wagonMVMatrix           = glm::translate(wagonMVMatrix, glm::vec3(-0.2, 0.09f, -0.1f));
     wagonMVMatrix           = glm::scale(wagonMVMatrix, glm::vec3(0.1f));
 
+    // chargement des infos
     wagon->WagonMaterial->ChargeMatrices(wagonMVMatrix, generalInfos->projMatrix);
     wagon->WagonMaterial->ChargeGLints();
-    //printf("%d\n", wagon->isActif);
 
+    // dessin
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, wagon->WagonObject->getVertexCount() * sizeof(unsigned int), wagon->WagonObject->getVertexBuffer(), GL_STATIC_DRAW);
     glDrawElements(GL_TRIANGLES, wagon->WagonObject->getIndexCount(), GL_UNSIGNED_INT, wagon->WagonObject->getIndexBuffer());

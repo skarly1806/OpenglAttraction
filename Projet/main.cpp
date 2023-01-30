@@ -75,6 +75,7 @@ public:
 
     std::unique_ptr<glimac::Image>* uTextures;
 
+
     Material(){}
 
     Material(GLint prog_GLid)
@@ -295,7 +296,7 @@ public:
         material = new Material(prog_GLid);
         material->color = color;
         material->isLamp = false;
-        material->hasTexture = false;
+        material->hasTexture = true;
         material->shininess  = 20.f;
         material->specularIntensity  = 1.f;
     }
@@ -609,6 +610,8 @@ int main(int argc, char* argv[])
     myPointLight->intensity         = 2.f;
     myPointLight->color             = glm::vec3(1, 1, 1);
 
+    
+
     Material* myLamp = myPointLight->GenerateLampe(program.getGLId());
     generalInfos->Lampes.push_back(myLamp);
 
@@ -691,6 +694,20 @@ int main(int argc, char* argv[])
     // Débinding du VAO
     glBindVertexArray(0);
 
+    //chargement texture
+    std::unique_ptr<glimac::Image> Herbe=glimac::loadImage("./assets/textures/herbe.jpg");
+    if(Herbe == NULL){
+        std::cerr << "Une des textures n'a pas pu etre chargée. \n" << std::endl;
+        exit(0);
+    }
+    GLint uTexture = glGetUniformLocation(program.getGLId(), "uTexture");
+    GLuint texture;
+    glGenTextures(1,&texture);
+    glBindTexture(GL_TEXTURE_2D,texture);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D,0);
+
     /* GENERATE MOONS */
     generalInfos->NbMoons = 0;
     std::vector<glm::vec3> randomTransform;
@@ -745,7 +762,11 @@ int main(int argc, char* argv[])
         CircuitGeneration(generalInfos, vbo, cylindre);
 
         // Dessin du sol
+        glBindTexture(GL_TEXTURE_2D, texture);
+        glUniform1i(uTexture, 0);
+        glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,Herbe->getWidth(),Herbe->getHeight(),0,GL_RGBA,GL_FLOAT,Herbe->getPixels());
         DrawFloor(generalInfos, vbo);
+        glBindTexture(GL_TEXTURE_2D, 0);
 
         // Dessin du Wagon
         DrawWagon(generalInfos, vbo);

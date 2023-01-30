@@ -221,6 +221,14 @@ public:
     }
 };
 
+struct Circuit{
+public:
+    std::vector<glm::vec3> CircuitParts;
+    std::vector<glm::vec3> CircuitColors;
+    Material*              CircuitMaterial;
+    int                    NbCircuitPoints = 0;
+};
+
 
 struct GeneralInfos {
 private:
@@ -246,10 +254,7 @@ public:
 
     glm::vec2 NbLights = glm::vec2(0, 0);
 
-    std::vector<glm::vec3> Circuit;
-    std::vector<glm::vec3> CircuitColors;
-    Material* CircuitMaterial;
-    int NbCircuitPoints = 0;
+    Circuit* circuit;
 
     glimac::Geometry* Wagon;
     Material*         WagonMaterial;
@@ -264,7 +269,10 @@ public:
         ViewPos         = glm::vec3(0, 0, 0);
         AmbiantLight    = glm::vec3(0, 0, 0);
         NbMoons         = 0;
-        CircuitMaterial = new Material(prog_GLid);
+
+        circuit = new Circuit();
+        circuit->CircuitMaterial = new Material(prog_GLid);
+
         WagonMaterial   = new Material(prog_GLid);
     }
 
@@ -295,15 +303,19 @@ void HandleEvents(GLFWwindow* window, glimac::TrackballCamera* camera)
     }
 }
 
-void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo)
+void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo, glimac::Cylindre cylindre)
 {
-    // printf("new:\n");
-    for (int i = 0; i < generalInfos->NbCircuitPoints; i++) {
-        generalInfos->CircuitMaterial->color = generalInfos->CircuitColors[i];
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, cylindre.getVertexCount() * sizeof(glimac::ShapeVertex), cylindre.getDataPointer(), GL_STATIC_DRAW);
 
-        glm::vec3 Pstart = generalInfos->Circuit[i];
+    Circuit * circuit = generalInfos->circuit;
 
-        glm::vec3 Pend = (generalInfos->NbCircuitPoints-1 == i) ? generalInfos->Circuit[0] : generalInfos->Circuit[i+1];
+    for (int i = 0; i < circuit->NbCircuitPoints; i++) {
+        circuit->CircuitMaterial->color = circuit->CircuitColors[i];
+
+        glm::vec3 Pstart = circuit->CircuitParts[i];
+        glm::vec3 Pend   = (circuit->NbCircuitPoints - 1 == i) ? circuit->CircuitParts[0] : circuit->CircuitParts[i + 1];
+
         glm::vec3 direction = glm::normalize(Pend - Pstart);
         glm::vec3 cylinderDirection = glm::vec3(0, 0, 1);
 
@@ -317,23 +329,17 @@ void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo)
             axis = glm::vec3(0, 1, 0); // on prend un axe qulconque a 90° de l'axe du cylindre (0,0,1)
         }
 
-        // printf("Angle: %f, Axis:%f %f %f, LEN: %f, DIR: %f %f %f\n", angle, axis.x, axis.y, axis.z, glm::length(direction), direction.x, direction.y, direction.z);
-
         glm::mat4 circuitMVMatrix = generalInfos->globalMVMatrix;
-        circuitMVMatrix           = glm::translate(circuitMVMatrix, Pstart);
-        circuitMVMatrix           = glm::rotate(circuitMVMatrix, angle, axis);
+        circuitMVMatrix           = glm::translate(circuitMVMatrix, Pstart); // move to start
+        circuitMVMatrix           = glm::rotate(circuitMVMatrix, angle, axis); // rotate towards end
+        circuitMVMatrix           = glm::scale(circuitMVMatrix, glm::vec3(1, 1, glm::length(Pend - Pstart))); // scale to length
 
-        generalInfos->CircuitMaterial->ChargeMatrices(circuitMVMatrix, generalInfos->projMatrix);
-        generalInfos->CircuitMaterial->ChargeGLints();
+        circuit->CircuitMaterial->ChargeMatrices(circuitMVMatrix, generalInfos->projMatrix);
+        circuit->CircuitMaterial->ChargeGLints();
 
-        glimac::Cylindre newCyl(glm::length(Pend - Pstart), 0.03f, 30, 30);
-
-        glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, newCyl.getVertexCount() * sizeof(glimac::ShapeVertex), newCyl.getDataPointer(), GL_STATIC_DRAW);
-        glDrawArrays(GL_TRIANGLES, 0, newCyl.getVertexCount());
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glDrawArrays(GL_TRIANGLES, 0, cylindre.getVertexCount());
     }
-    // printf("\n\n");
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
 int main(int argc, char* argv[])
@@ -390,19 +396,19 @@ int main(int argc, char* argv[])
     circuit.push_back(glm::vec3(2, 0, 0));
     circuit.push_back(glm::vec3(2.5, 0.5, 0));
     circuit.push_back(glm::vec3(3.5, 0.5, 0));
-    circuit.push_back(glm::vec3(3.5, 2.5, 0));
-    circuit.push_back(glm::vec3(3.5, 2.5, 1));
+    circuit.push_back(glm::vec3(5.5, 2.5, 0));
+    circuit.push_back(glm::vec3(5.5, 2.5, 1));
     circuit.push_back(glm::vec3(3.5, 0.5, 1));
     circuit.push_back(glm::vec3(2.5, 0.5, 1));
-    circuit.push_back(glm::vec3(2.5, 0, 1));
+    circuit.push_back(glm::vec3(1.5, 0, 1));
     circuit.push_back(glm::vec3(0, 0, 1));
-    generalInfos->Circuit         = circuit;
-    generalInfos->NbCircuitPoints = 10;
+    generalInfos->circuit->CircuitParts   = circuit;
+    generalInfos->circuit->NbCircuitPoints  = 10;
 
-    for(int i = 0; i<generalInfos->NbCircuitPoints; i++){
-        generalInfos->CircuitColors.push_back(glm::vec3(randomFloat(1.f), randomFloat(1.f), randomFloat(1.f)));
+    for(int i = 0; i<generalInfos->circuit->NbCircuitPoints; i++){
+        generalInfos->circuit->CircuitColors.push_back(glm::vec3(randomFloat(1.f), randomFloat(1.f), randomFloat(1.f)));
     }
-    Material* circuitMaterial = generalInfos->CircuitMaterial;
+    Material* circuitMaterial = generalInfos->circuit->CircuitMaterial;
     Material* wagonMaterial   = generalInfos->WagonMaterial;
 
     // set ambiant light infos and charge in shaders
@@ -552,49 +558,8 @@ int main(int argc, char* argv[])
         currentLight->ChargeGLints(lightPos_vs);
 
         /* GENERATION OF CIRCUIT */
-        CircuitGeneration(generalInfos, vbo);
+        CircuitGeneration(generalInfos, vbo, cylindre);
 
-        /* CHARGEMENT MATERIAU TERRE */
-        //earthMaterial->ChargeGLints();
-
-        // Dessin de la terre
-        // glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        // glBufferData(GL_ARRAY_BUFFER, sphere.getVertexCount() * sizeof(glimac::ShapeVertex), sphere.getDataPointer(), GL_STATIC_DRAW);
-        // //glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
-        // glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        // // Dessin du cylindre
-        // glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        // glBufferData(GL_ARRAY_BUFFER, cylindre.getVertexCount() * sizeof(glimac::ShapeVertex), cylindre.getDataPointer(), GL_STATIC_DRAW);
-        // //glDrawArrays(GL_TRIANGLES, 0, cylindre.getVertexCount());
-        // glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        // // Dessin du cone
-        // glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        // glBufferData(GL_ARRAY_BUFFER, cone.getVertexCount() * sizeof(glimac::ShapeVertex), cone.getDataPointer(), GL_STATIC_DRAW);
-        // //glDrawArrays(GL_TRIANGLES, 0, cone.getVertexCount());
-        // glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        // // Dessin du Wagon
-        // GLuint vertexbuffer;
-        // glGenBuffers(1, &vertexbuffer);
-        // glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-        // glBufferData(GL_ARRAY_BUFFER, generalInfos->Wagon->verticesWagon.size() * sizeof(glm::vec3), &(generalInfos->Wagon->verticesWagon)[0], GL_STATIC_DRAW);
-
-        // GLuint uvbuffer;
-        // glGenBuffers(1, &uvbuffer);
-        // glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
-        // glBufferData(GL_ARRAY_BUFFER, generalInfos->Wagon->uvsWagon.size() * sizeof(glm::vec2), &(generalInfos->Wagon->uvsWagon)[0], GL_STATIC_DRAW);
-
-        // // on attribu le buffer : vertices
-        // glEnableVertexAttribArray(0);
-		// glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer);
-		// glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,0,(void*)0);
-
-		// // on attribu le buffer : UVs
-		// glEnableVertexAttribArray(1);
-		// glBindBuffer(GL_ARRAY_BUFFER, uvbuffer);
-		// glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,0,(void*)0);
 
 		// Dessin du Wagon
         glm::mat4 wagonMVMatrix = generalInfos->globalMVMatrix;

@@ -71,9 +71,10 @@ public:
     float      specularIntensity;
     float      shininess;
     bool       hasTexture;
+    int       NbTextures;
     bool       isLamp;
 
-    glimac::Image** uTextures;
+    std::unique_ptr<glimac::Image>* uTextures;
 
 
     Material(){}
@@ -93,12 +94,13 @@ public:
 
         // Textures
         uTextures_gl = (GLuint*)calloc(MAX_TEXTURES, sizeof(GLuint));
-        uTextures    = (glimac::Image**)calloc(MAX_TEXTURES, sizeof(glimac::Image*));
+        uTextures    = (std::unique_ptr<glimac::Image>*)calloc(MAX_TEXTURES, sizeof(std::unique_ptr<glimac::Image>));
 
         for (int i = 0; i < MAX_TEXTURES; i++) {
             char varname[50] = "";
             sprintf(varname, "uMaterial.textures[%d]", i);
             uTextures_gl[i] = glGetUniformLocation(prog_GLid, varname);
+            printf("%s\n", varname);
         }
     }
 
@@ -108,15 +110,22 @@ public:
         glUniform1f(shininess_gl, shininess);
         glUniform1f(hasTexture_gl, hasTexture);
         glUniform1f(isLamp_gl, isLamp);
-        if (hasTexture)
-            for (int i = 0; i < MAX_TEXTURES; i++) {
-                glGenTextures(1, &(uTextures_gl[i]));
-                glBindTexture(GL_TEXTURE_2D, uTextures_gl[i]);
+        if (hasTexture){
+            GLuint texture;
+            glGenTextures(NbTextures, &texture);
+            glBindTexture(GL_TEXTURE_2D, texture);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+            for (int i = 0; i < NbTextures; i++) {
+                if(i==0)
+                    glActiveTexture(GL_TEXTURE0);
+                else
+                    glActiveTexture(GL_TEXTURE1);
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, uTextures[i]->getWidth(), uTextures[i]->getHeight(), 0, GL_RGBA, GL_FLOAT, uTextures[i]->getPixels());
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-                glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glBindTexture(GL_TEXTURE_2D, 0);
+                glUniform1i(uTextures_gl[i], i);
+                //glBindTexture(GL_TEXTURE_2D, 0);
             }
+        }
     }
 
     void ChargeMatrices(glm::mat4 materialMVMatrix, glm::mat4 projMatrix)
@@ -296,7 +305,7 @@ public:
         material = new Material(prog_GLid);
         material->color = color;
         material->isLamp = false;
-        material->hasTexture = true;
+        material->hasTexture = false;
         material->shininess  = 20.f;
         material->specularIntensity  = 1.f;
     }
@@ -342,7 +351,7 @@ public:
     double previous_x;
     double previous_y;
 
-    GeneralInfos(GLint prog_GLid)
+    GeneralInfos(GLint prog_GLid, glimac::FilePath applicationPath)
     {
         AmbiantLight_gl = glGetUniformLocation(prog_GLid, "uAmbiantLight");
         ViewPos_gl = glGetUniformLocation(prog_GLid, "uViewPos");
@@ -354,13 +363,15 @@ public:
         NbMoons         = 0;
 
         floor    = new Rectangle(prog_GLid, 20.f, 20.f, glm::vec3(0, 1, 0));
+
         //chargement texture
-        std::unique_ptr<glimac::Image> Herbe=glimac::loadImage("./assets/textures/herbe.jpg");
-        if(Herbe == NULL){
+        floor->material->uTextures[0] = glimac::loadImage(applicationPath.dirPath() + "./assets/textures/herbe.jpg");
+        if (floor->material->uTextures[0] == NULL) {
             std::cerr << "Une des textures n'a pas pu etre chargée. \n" << std::endl;
             exit(0);
         }
-        floor->material->uTextures[0]=Herbe.get();
+        floor->material->hasTexture   = true;
+        floor->material->NbTextures   = 1;
         circuit  = new Circuit(prog_GLid);
         wagon = new Wagon(prog_GLid);
 
@@ -396,7 +407,7 @@ void HandleEvents(GLFWwindow* window, GeneralInfos* generalInfos)
     if (rotationX < generalInfos->cameraMinDegAngle)
         rotationX = generalInfos->cameraMinDegAngle;
 
-    printf("X: %f, Y: %f\n", rotationX, rotationY); fflush(stdout);
+    //printf("X: %f, Y: %f\n", rotationX, rotationY); fflush(stdout);
 
     generalInfos->camera->rotateLeft(rotationX);
     generalInfos->camera->rotateUp(rotationY);
@@ -603,7 +614,7 @@ int main(int argc, char* argv[])
     /* CREATE ALL THINGS */
 
     // infos générales
-    GeneralInfos* generalInfos = new GeneralInfos(program.getGLId());
+    GeneralInfos* generalInfos = new GeneralInfos(program.getGLId(), applicationPath);
 
     // les lumieres
     // set ambiant light infos and charge in shaders
@@ -617,7 +628,7 @@ int main(int argc, char* argv[])
     myPointLight->intensity         = 2.f;
     myPointLight->color             = glm::vec3(1, 1, 1);
 
-    
+
 
     Material* myLamp = myPointLight->GenerateLampe(program.getGLId());
     generalInfos->Lampes.push_back(myLamp);
@@ -701,7 +712,7 @@ int main(int argc, char* argv[])
     // Débinding du VAO
     glBindVertexArray(0);
 
-    
+
 
 
     /* GENERATE MOONS */

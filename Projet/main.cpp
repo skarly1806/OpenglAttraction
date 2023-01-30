@@ -238,13 +238,14 @@ struct Wagon{
 public:
     glimac::Geometry* WagonObject;
     Material*         WagonMaterial;
+
     bool isActif;
+    float timeSinceSwitchingIndex;
+
     glm::vec3 Position;
     int indexPos;
 
     float speed;
-    float minSpeed;
-    float maxSpeed;
 
     Wagon(GLint prog_GLid)
     {
@@ -256,11 +257,10 @@ public:
         }
         WagonMaterial = new Material(prog_GLid);
         isActif = false;
+        timeSinceSwitchingIndex = 0.f;
         indexPos = 0;
 
         speed = 0.f;
-        minSpeed = 0.1f;
-        maxSpeed = 0.5f;
 
         Position = glm::vec3(0, 0, 0);
     }
@@ -329,6 +329,7 @@ public:
 
 void HandleEvents(GLFWwindow* window, GeneralInfos* generalInfos)
 {
+    glfwPollEvents();
     double c_xpos, c_ypos;
     glfwGetCursorPos(window, &c_xpos, &c_ypos);
 
@@ -345,9 +346,17 @@ void HandleEvents(GLFWwindow* window, GeneralInfos* generalInfos)
     }
 
     if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
-        generalInfos->wagon->isActif = !generalInfos->wagon->isActif;
-        if (!generalInfos->wagon->isActif){
-            generalInfos->wagon->ResetState();
+        glfwWaitEventsTimeout(0.3);
+        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_RELEASE) {
+            generalInfos->wagon->isActif = !generalInfos->wagon->isActif;
+            if (!generalInfos->wagon->isActif) {
+                generalInfos->wagon->ResetState();
+            }
+            else {
+                generalInfos->wagon->speed = 1.f;
+                generalInfos->wagon->timeSinceSwitchingIndex = (float)glfwGetTime();
+            }
+            printf("Switched isActif to %d\n", generalInfos->wagon->isActif);
         }
     }
 }
@@ -394,34 +403,42 @@ void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo, glimac::Cylindre 
 void DrawWagon(GeneralInfos* generalInfos, GLuint vbo){
     Wagon* wagon = generalInfos->wagon;
     Circuit* circuit = generalInfos->circuit;
+    glm::vec3 Pstart    = circuit->CircuitParts[wagon->indexPos];
+    glm::vec3 Pend      = (wagon->indexPos == circuit->NbCircuitPoints - 1) ? circuit->CircuitParts[0] : circuit->CircuitParts[wagon->indexPos + 1];
+    glm::vec3 direction = glm::normalize(Pend - Pstart);
 
     if(wagon->isActif){
-        glm::vec3 Pstart = circuit->CircuitParts[wagon->indexPos];
-        glm::vec3 Pend   = (wagon->indexPos == circuit->NbCircuitPoints - 1) ? circuit->CircuitParts[0] : circuit->CircuitParts[wagon->indexPos + 1];
-        glm::vec3 direction = glm::normalize(Pend - Pstart);
+        float my_time = (float)glfwGetTime() - wagon->timeSinceSwitchingIndex;
+        float lengthToMove = wagon->speed * my_time;
 
-        if(glm::length(wagon->Position - Pend)>0.f) // si pas arrivé a la fin
+        wagon->Position = (glm::length(Pstart - Pend) > lengthToMove) ? Pstart + lengthToMove * direction : Pend;
+
+        if(wagon->Position == Pend) // si arrivé a la fin
         {
-            float lengthToAdd = wagon->speed;
-            // glm::vec3 totalLengthVector = wagon->speed * direction;
-            // // round the length vector
-            // glm::vec3 lengthVector = glm::vec3(std::ceil(totalLengthVector.x * 100.0) / 100.0, std::ceil(totalLengthVector.y * 100.0) / 100.0, std::ceil(totalLengthVector.z * 100.0) / 100.0);
-
-            while (glm::length(glm::vec3(0, 0, 0) - lengthToAdd * direction) > 0.0f && glm::length(wagon->Position - Pend) > 0.02f) {
-                wagon->Position += 0.01f * direction; // add a bit of length in direction
-                lengthToAdd -= 0.01f; // remove a bit of the length
-
-                if (glm::length(wagon->Position - Pend) <= 0.f){ // if arrived to destination, change destination
-                    wagon->indexPos     = (wagon->indexPos == circuit->NbCircuitPoints - 1) ? 0 : wagon->indexPos + 1;
-                    Pstart    = circuit->CircuitParts[wagon->indexPos];
-                    Pend      = (wagon->indexPos == circuit->NbCircuitPoints - 1) ? circuit->CircuitParts[0] : circuit->CircuitParts[wagon->indexPos + 1];
-                    direction = glm::normalize(Pend - Pstart);
-                }
-            }
+            wagon->indexPos = (wagon->indexPos == circuit->NbCircuitPoints - 1) ? 0 : wagon->indexPos + 1;
+            wagon->timeSinceSwitchingIndex = (float)glfwGetTime();
         }
     }
+    else{
+        wagon->Position = circuit->CircuitParts[0];
+    }
+
+    glm::vec3 wagonDirection = glm::vec3(1, 0, 0);
+    float     angle = glm::radians(180.f); // set a 180 au cas ou parallele et opposés
+    glm::vec3 axis  = glm::cross(wagonDirection, direction);
+    if (glm::length(axis) > 0.1f)
+        angle = glm::asin(glm::length(axis));
+    else { // si les vecteurs sont paralleles
+        // si dans le meme sens, pas de changement
+        if (glm::dot(glm::normalize(wagonDirection), glm::normalize(direction)) >= 0.f)
+            angle = 0.f;
+        axis = glm::vec3(0, 1, 0); // on prend un axe qulconque a 90° de l'axe du wagon
+    }
+
     glm::mat4 wagonMVMatrix = generalInfos->globalMVMatrix;
     wagonMVMatrix           = glm::translate(wagonMVMatrix, wagon->Position);
+    wagonMVMatrix           = glm::rotate(wagonMVMatrix, angle, axis); // rotate towards end
+    wagonMVMatrix           = glm::translate(wagonMVMatrix, glm::vec3(-0.2, 0.09f, -0.1f));
     wagonMVMatrix           = glm::scale(wagonMVMatrix, glm::vec3(0.1f));
 
     wagon->WagonMaterial->ChargeMatrices(wagonMVMatrix, generalInfos->projMatrix);
@@ -603,9 +620,6 @@ int main(int argc, char* argv[])
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window)) {
         /* EVENTS */
-        glfwPollEvents();
-
-        /* MOUSE */
         HandleEvents(window, generalInfos);
 
         /* RENDERING */
@@ -687,8 +701,6 @@ int main(int argc, char* argv[])
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
-        /* Poll for and process events */
-        glfwPollEvents();
     }
 
     glDeleteBuffers(1, &vbo);

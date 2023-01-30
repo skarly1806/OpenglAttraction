@@ -46,18 +46,6 @@ static void size_callback(GLFWwindow* /*window*/, int width, int height)
     window_height = height;
 }
 
-struct Vertex2DUV {
-    glm::vec2 position;
-    glm::vec2 uv;
-
-    Vertex2DUV(){};
-    Vertex2DUV(glm::vec2 p, glm::vec2 c)
-    {
-        position = p;
-        uv       = c;
-    };
-};
-
 float randomFloat(float limit)
 {
     return static_cast<float>(rand()) / static_cast<float>(RAND_MAX / limit);
@@ -277,6 +265,42 @@ public:
 
 };
 
+struct Rectangle {
+public:
+    std::vector<glimac::ShapeVertex> vertices;
+    std::vector<int>        indices;
+    unsigned int             numVertices;
+    unsigned int              numIndices;
+
+    Material* material;
+
+    Rectangle(GLint prog_GLid, float length, float height, glm::vec3 color = glm::vec3(1, 1, 1))
+    {
+        glm::vec3 normal = glm::vec3(0, 0, -1);
+        vertices.push_back(glimac::ShapeVertex(glm::vec3(-length / 2, -height / 2, 0), normal, glm::vec2(0, 0)));
+        vertices.push_back(glimac::ShapeVertex(glm::vec3(length / 2, -height / 2, 0), normal, glm::vec2(1, 0)));
+        vertices.push_back(glimac::ShapeVertex(glm::vec3(length / 2, height / 2, 0), normal, glm::vec2(1, 1)));
+        vertices.push_back(glimac::ShapeVertex(glm::vec3(-length / 2, height / 2, 0), normal, glm::vec2(0, 1)));
+
+        indices.push_back(0);
+        indices.push_back(1);
+        indices.push_back(2);
+        indices.push_back(0);
+        indices.push_back(2);
+        indices.push_back(3);
+
+        numVertices = 4;
+        numIndices = 6;
+
+        material = new Material(prog_GLid);
+        material->color = color;
+        material->isLamp = false;
+        material->hasTexture = false;
+        material->shininess  = 20.f;
+        material->specularIntensity  = 1.f;
+    }
+};
+
 struct GeneralInfos {
 private:
     GLint AmbiantLight_gl;
@@ -305,6 +329,8 @@ public:
 
     Wagon*   wagon;
 
+    Rectangle*  floor;
+
     glimac::TrackballCamera* camera;
 
     GeneralInfos(GLint prog_GLid)
@@ -318,8 +344,10 @@ public:
         AmbiantLight    = glm::vec3(0, 0, 0);
         NbMoons         = 0;
 
+        floor    = new Rectangle(prog_GLid, 20.f, 20.f, glm::vec3(0, 1, 0));
         circuit  = new Circuit(prog_GLid);
         wagon = new Wagon(prog_GLid);
+
         camera = new glimac::TrackballCamera();
     }
 
@@ -470,6 +498,23 @@ void DrawWagon(GeneralInfos* generalInfos, GLuint vbo){
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
+void DrawFloor(GeneralInfos* generalInfos, GLuint vbo){
+    glm::mat4 floorMVMatrix = generalInfos->globalMVMatrix;
+    floorMVMatrix           = glm::translate(floorMVMatrix, glm::vec3(0, -0.3, 0));
+    floorMVMatrix           = glm::rotate(floorMVMatrix, glm::radians(90.f), glm::vec3(1, 0, 0));
+
+    // charge les infos
+    generalInfos->floor->material->ChargeMatrices(floorMVMatrix, generalInfos->projMatrix);
+    generalInfos->floor->material->ChargeGLints();
+
+    // dessin
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, generalInfos->floor->numVertices * sizeof(glimac::ShapeVertex), &generalInfos->floor->vertices[0], GL_STATIC_DRAW);
+    glDrawElements(GL_TRIANGLES, generalInfos->floor->numIndices, GL_UNSIGNED_INT, generalInfos->floor->indices.data());
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+}
+
 int main(int argc, char* argv[])
 {
 
@@ -594,16 +639,9 @@ int main(int argc, char* argv[])
     GLuint vbo;
     glGenBuffers(1, &vbo);
 
-    // GLuint ibo ;
-    // glGenBuffers(1, &ibo);
-    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-    // glBufferData(GL_ELEMENT_ARRAY_BUFFER, generalInfos->Wagon->getIndexCount() * sizeof(unsigned int), generalInfos->Wagon->getIndexBuffer(), GL_STATIC_DRAW);
-    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-
     // Création du VAO
     GLuint vao;
     glGenVertexArrays(1, &vao);
-    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
 
     // Binding du VAO
     glBindVertexArray(vao);
@@ -620,7 +658,6 @@ int main(int argc, char* argv[])
 
     // Débinding du VAO
     glBindVertexArray(0);
-    // glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
 
     /* GENERATE MOONS */
     generalInfos->NbMoons = 0;
@@ -675,8 +712,10 @@ int main(int argc, char* argv[])
         /* GENERATION OF CIRCUIT */
         CircuitGeneration(generalInfos, vbo, cylindre);
 
+        // Dessin du sol
+        DrawFloor(generalInfos, vbo);
 
-		// Dessin du Wagon
+        // Dessin du Wagon
         DrawWagon(generalInfos, vbo);
 
         // Positionnement de la sphère représentant la lumière

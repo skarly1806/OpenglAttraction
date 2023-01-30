@@ -246,6 +246,8 @@ public:
     int indexPos;
 
     float speed;
+    float minSpeed;
+    float maxSpeed;
 
     Wagon(GLint prog_GLid)
     {
@@ -261,6 +263,8 @@ public:
         indexPos = 0;
 
         speed = 0.f;
+        minSpeed = 0.5f;
+        maxSpeed = 2.f;
 
         Position = glm::vec3(0, 0, 0);
     }
@@ -353,7 +357,7 @@ void HandleEvents(GLFWwindow* window, GeneralInfos* generalInfos)
                 generalInfos->wagon->ResetState();
             }
             else {
-                generalInfos->wagon->speed = 1.f;
+                generalInfos->wagon->speed                   = generalInfos->wagon->minSpeed;
                 generalInfos->wagon->timeSinceSwitchingIndex = (float)glfwGetTime();
             }
             printf("Switched isActif to %d\n", generalInfos->wagon->isActif);
@@ -408,6 +412,13 @@ void DrawWagon(GeneralInfos* generalInfos, GLuint vbo){
     glm::vec3 direction = glm::normalize(Pend - Pstart);
 
     if(wagon->isActif){
+        if(direction.y > 0.f){
+            wagon->speed = (wagon->speed > wagon->minSpeed) ? wagon->speed - 0.01f : wagon->minSpeed;
+        }
+        else if(direction.y < 0.f){
+            wagon->speed = (wagon->speed < wagon->maxSpeed) ? wagon->speed + 0.02f : wagon->maxSpeed;
+        }
+
         float my_time = (float)glfwGetTime() - wagon->timeSinceSwitchingIndex;
         float lengthToMove = wagon->speed * my_time;
 

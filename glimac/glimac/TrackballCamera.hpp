@@ -3,6 +3,7 @@
 #include <vector>
 #include "common.hpp"
 #include "glm.hpp"
+#include "glm.hpp"
 
 namespace glimac {
 

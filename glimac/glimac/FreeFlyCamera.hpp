@@ -18,6 +18,16 @@ namespace glimac {
             this->m_fTheta = 0.f;
         }
 
+        float getAnglePhi()
+        {
+            return m_fPhi;
+        }
+
+        float getAngleTheta()
+        {
+            return m_fTheta;
+        }
+
         void computeDirectionVectors()
         {
             float radPhi = m_fPhi;
@@ -43,7 +53,7 @@ namespace glimac {
         /// @param degrees
         void rotateLeft(float degrees)
         {
-            m_fPhi += glm::radians(degrees);
+            m_fPhi = glm::radians(degrees);
             computeDirectionVectors();
         }
 
@@ -51,7 +61,7 @@ namespace glimac {
         /// @param degrees
         void rotateUp(float degrees)
         {
-            m_fTheta += glm::radians(degrees);
+            m_fTheta = glm::radians(degrees);
             computeDirectionVectors();
         }
 
@@ -59,6 +69,21 @@ namespace glimac {
         {
             glm::mat4 ViewMatrix = glm::lookAt(m_Position, m_Position + m_FrontVector, m_UpVector);
             return ViewMatrix;
+        }
+
+        void setElevation(float e){
+            m_Position.y = e;
+            computeDirectionVectors();
+        }
+
+        void SetPosition(glm::vec3 pos)
+        {
+            m_Position = pos;
+            computeDirectionVectors();
+        }
+
+        float getElevation(){
+            return m_Position.y;
         }
 
     private:

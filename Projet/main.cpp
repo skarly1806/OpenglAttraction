@@ -319,37 +319,51 @@ private:
     GLint NbLights_gl;
 
 public:
+    // matrices
     glm::mat4 globalMVMatrix;
     glm::mat4 projMatrix;
 
-    glm::vec3 ViewPos; // position camera
-
     glm::vec3 AmbiantLight = glm::vec3(0, 0, 0);
 
+    // IDK
     std::vector<Material*> MoonMaterials;
     int                    NbMoons;
 
+    // lights
     std::vector<DirLight*> DirLights;
     std::vector<PointLight*> PointLights;
     std::vector<Material*> Lampes;
 
     glm::vec2 NbLights = glm::vec2(0, 0);
 
+    // objects
     Circuit* circuit;
 
     Wagon*   wagon;
 
     Rectangle*  floor;
+    float floorElevation = -0.3f;
+    float characterHeight = 0.6f;
 
-    glimac::TrackballCamera* camera;
+    // camera
+
+    glm::vec3 ViewPos; // position camera
+    glimac::TrackballCamera* t_camera;
+    glimac::FreeFlyCamera* f_camera;
+    bool freeView = false;
     float cameraMinDist = 0.2f;
     float cameraMaxDist = 20.f;
     float cameraDistIncrement = 0.2f;
     float cameraMinDegAngle = 0.1f;
     float cameraMaxDegAngle = 89.9f;
     float sensitivity = 0.8f;
+    float speed = 0.15f;
     double previous_x;
     double previous_y;
+
+    // keys inputs
+    bool enterReleased = true;
+    bool spaceReleased = true;
 
     GeneralInfos(GLint prog_GLid, glimac::FilePath applicationPath)
     {
@@ -371,7 +385,9 @@ public:
         circuit  = new Circuit(prog_GLid);
         wagon = new Wagon(prog_GLid);
 
-        camera = new glimac::TrackballCamera();
+        t_camera = new glimac::TrackballCamera();
+        f_camera = new glimac::FreeFlyCamera();
+        freeView = false;
     }
 
     void ChargeGLints()
@@ -395,50 +411,95 @@ void HandleEvents(GLFWwindow* window, GeneralInfos* generalInfos)
     generalInfos->previous_x = c_xpos;
     generalInfos->previous_y = c_ypos;
 
-    float rotationX = d_y * generalInfos->sensitivity + glm::degrees(generalInfos->camera->getAngleX());
-    float rotationY = d_x * generalInfos->sensitivity + glm::degrees(generalInfos->camera->getAngleY());
-
-    if (rotationX > generalInfos->cameraMaxDegAngle)
-        rotationX = generalInfos->cameraMaxDegAngle;
-    if (rotationX < generalInfos->cameraMinDegAngle)
-        rotationX = generalInfos->cameraMinDegAngle;
-
-    //printf("X: %f, Y: %f\n", rotationX, rotationY); fflush(stdout);
-
-    generalInfos->camera->rotateLeft(rotationX);
-    generalInfos->camera->rotateUp(rotationY);
-
-
-    /* KEYBOARD */
-    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-        if(generalInfos->camera->getDistance() - generalInfos->cameraDistIncrement > generalInfos->cameraMinDist)
-            generalInfos->camera->moveFront(generalInfos->cameraDistIncrement);
-        else
-            generalInfos->camera->setDistance(generalInfos->cameraMinDist);
+    // keys to change state and use wagon
+    if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS && generalInfos->enterReleased) {
+        generalInfos->freeView      = !generalInfos->freeView;
+        generalInfos->enterReleased = false;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_RELEASE) {
+        generalInfos->enterReleased = true;
     }
 
-    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-        if (generalInfos->camera->getDistance() + generalInfos->cameraDistIncrement < generalInfos->cameraMaxDist)
-            generalInfos->camera->moveFront(-generalInfos->cameraDistIncrement);
-        else
-            generalInfos->camera->setDistance(generalInfos->cameraMaxDist);
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && generalInfos->spaceReleased) {
+        generalInfos->wagon->isActif = !generalInfos->wagon->isActif;
+        if (!generalInfos->wagon->isActif) {
+            generalInfos->wagon->ResetState();
+        }
+        else {
+            generalInfos->wagon->speed                   = generalInfos->wagon->minSpeed;
+            generalInfos->wagon->timeSinceSwitchingIndex = (float)glfwGetTime();
+        }
+        generalInfos->spaceReleased = false;
+    }
+    else if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_RELEASE) {
+        generalInfos->spaceReleased = true;
     }
 
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
-        glfwWaitEventsTimeout(0.3);
-        if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_RELEASE) {
-            generalInfos->wagon->isActif = !generalInfos->wagon->isActif;
-            if (!generalInfos->wagon->isActif) {
-                generalInfos->wagon->ResetState();
-            }
-            else {
-                generalInfos->wagon->speed                   = generalInfos->wagon->minSpeed;
-                generalInfos->wagon->timeSinceSwitchingIndex = (float)glfwGetTime();
-            }
-            printf("Switched isActif to %d\n", generalInfos->wagon->isActif);
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+        glfwSetWindowShouldClose(window, GL_TRUE);
+    }
+
+    // trackball camera events
+    if(!generalInfos->freeView)
+    {
+        float rotationX = d_y * generalInfos->sensitivity + glm::degrees(generalInfos->t_camera->getAngleX());
+        float rotationY = d_x * generalInfos->sensitivity + glm::degrees(generalInfos->t_camera->getAngleY());
+
+        if (rotationX > generalInfos->cameraMaxDegAngle)
+            rotationX = generalInfos->cameraMaxDegAngle;
+        if (rotationX < generalInfos->cameraMinDegAngle)
+            rotationX = generalInfos->cameraMinDegAngle;
+
+        generalInfos->t_camera->rotateLeft(rotationX);
+        generalInfos->t_camera->rotateUp(rotationY);
+
+        /* KEYBOARD */
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+            if (generalInfos->t_camera->getDistance() - generalInfos->cameraDistIncrement > generalInfos->cameraMinDist)
+                generalInfos->t_camera->moveFront(generalInfos->cameraDistIncrement);
+            else
+                generalInfos->t_camera->setDistance(generalInfos->cameraMinDist);
+        }
+
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+            if (generalInfos->t_camera->getDistance() + generalInfos->cameraDistIncrement < generalInfos->cameraMaxDist)
+                generalInfos->t_camera->moveFront(-generalInfos->cameraDistIncrement);
+            else
+                generalInfos->t_camera->setDistance(generalInfos->cameraMaxDist);
         }
     }
+
+    // freefly camera events
+    else {
+        float rotationX = -generalInfos->sensitivity * d_x + glm::degrees(generalInfos->f_camera->getAnglePhi());
+        float rotationY = -generalInfos->sensitivity * d_y + glm::degrees(generalInfos->f_camera->getAngleTheta());
+
+        if (rotationY > generalInfos->cameraMaxDegAngle)
+            rotationY = generalInfos->cameraMaxDegAngle;
+        if (rotationY < generalInfos->cameraMinDegAngle)
+            rotationY = generalInfos->cameraMinDegAngle;
+
+        generalInfos->f_camera->rotateLeft(rotationX);
+        generalInfos->f_camera->rotateUp(rotationY);
+
+        /* KEYBOARD */
+        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+            generalInfos->f_camera->moveFront(0.1f);
+        }
+        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+            generalInfos->f_camera->moveFront(-0.1f);
+        }
+        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+            generalInfos->f_camera->moveLeft(0.1f);
+        }
+        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+            generalInfos->f_camera->moveLeft(-0.1f);
+        }
+
+        if (generalInfos->f_camera->getElevation() != generalInfos->floorElevation + generalInfos->characterHeight)
+            generalInfos->f_camera->setElevation(generalInfos->floorElevation + generalInfos->characterHeight);
     }
+}
 
 void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo, glimac::Cylindre cylindre)
 {
@@ -547,7 +608,7 @@ void DrawWagon(GeneralInfos* generalInfos, GLuint vbo){
 
 void DrawFloor(GeneralInfos* generalInfos, GLuint vbo){
     glm::mat4 floorMVMatrix = generalInfos->globalMVMatrix;
-    floorMVMatrix           = glm::translate(floorMVMatrix, glm::vec3(0, -0.3, 0));
+    floorMVMatrix           = glm::translate(floorMVMatrix, glm::vec3(0, generalInfos->floorElevation, 0));
     floorMVMatrix           = glm::rotate(floorMVMatrix, glm::radians(90.f), glm::vec3(1, 0, 0));
 
     // charge les infos
@@ -713,8 +774,6 @@ int main(int argc, char* argv[])
     glBindVertexArray(0);
 
 
-
-
     /* GENERATE MOONS */
     generalInfos->NbMoons = 0;
     std::vector<glm::vec3> randomTransform;
@@ -729,6 +788,8 @@ int main(int argc, char* argv[])
         generalInfos->MoonMaterials.push_back(new_moon);
     }
 
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window)) {
         /* EVENTS */
@@ -736,7 +797,11 @@ int main(int argc, char* argv[])
 
         /* RENDERING */
 
-        glm::mat4 ViewMatrix  = generalInfos->camera->getViewMatrix();
+        glm::mat4 ViewMatrix;
+        if (!generalInfos->freeView)
+            ViewMatrix = generalInfos->t_camera->getViewMatrix();
+        else
+            ViewMatrix = generalInfos->f_camera->getViewMatrix();
         generalInfos->ViewPos = glm::vec3(ViewMatrix[0][0], ViewMatrix[0][1], ViewMatrix[0][2]);
         generalInfos->ChargeGLints();
 

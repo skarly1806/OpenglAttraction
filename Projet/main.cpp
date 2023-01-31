@@ -24,32 +24,6 @@ const float PI = 3.141593;
 #define MAX_TEXTURES 2
 #define MAX_LIGHTS 10
 
-static void key_callback(GLFWwindow* /*window*/, int /*key*/, int /*scancode*/, int /*action*/, int /*mods*/)
-{
-}
-
-static void mouse_button_callback(GLFWwindow* /*window*/, int /*button*/, int /*action*/, int /*mods*/)
-{
-}
-
-static void scroll_callback(GLFWwindow* /*window*/, double /*xoffset*/, double /*yoffset*/)
-{
-}
-
-static void cursor_position_callback(GLFWwindow* /*window*/, double /*xpos*/, double /*ypos*/)
-{
-}
-
-static void size_callback(GLFWwindow* /*window*/, int width, int height)
-{
-    window_width  = width;
-    window_height = height;
-}
-
-float randomFloat(float limit)
-{
-    return static_cast<float>(rand()) / static_cast<float>(RAND_MAX / limit);
-}
 
 /* STRUCTURES */
 struct Material {
@@ -363,11 +337,6 @@ public:
     // state
     bool mounting = false;
 
-    // keys inputs
-    bool enterReleased = true;
-    bool spaceReleased = true;
-    bool eReleased = true;
-
     // basic objects
     glimac::Sphere* sphere;
     glimac::Cylindre* cylindre;
@@ -423,29 +392,15 @@ GLFWwindow*   window;
 GeneralInfos* generalInfos;
 
 /* METHODS */
-void HandleEvents()
+
+static void key_callback(GLFWwindow* /*window*/, int key, int /*scancode*/, int action, int /*mods*/)
 {
-    glfwPollEvents();
-
-    /* MOUSE */
-    double c_xpos, c_ypos;
-    glfwGetCursorPos(window, &c_xpos, &c_ypos);
-    double d_y = c_ypos - generalInfos->previous_y;
-    double d_x = c_xpos - generalInfos->previous_x;
-
-    generalInfos->previous_x = c_xpos;
-    generalInfos->previous_y = c_ypos;
-
     // keys to change state and use wagon
-    if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_PRESS && generalInfos->enterReleased) {
+    if (key == GLFW_KEY_ENTER && action == GLFW_PRESS) {
         generalInfos->freeView      = !generalInfos->freeView;
-        generalInfos->enterReleased = false;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_ENTER) == GLFW_RELEASE) {
-        generalInfos->enterReleased = true;
     }
 
-    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS && generalInfos->spaceReleased) {
+    if (key == GLFW_KEY_SPACE && action == GLFW_PRESS) {
         generalInfos->wagon->isActif = !generalInfos->wagon->isActif;
         if (!generalInfos->wagon->isActif) {
             generalInfos->wagon->ResetState();
@@ -454,19 +409,39 @@ void HandleEvents()
             generalInfos->wagon->speed                   = generalInfos->wagon->minSpeed;
             generalInfos->wagon->timeSinceSwitchingIndex = (float)glfwGetTime();
         }
-        generalInfos->spaceReleased = false;
-    }
-    else if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_RELEASE) {
-        generalInfos->spaceReleased = true;
     }
 
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, GL_TRUE);
     }
 
+    if(generalInfos->freeView){
+        // keys to change mouting wagon state
+        if (key == GLFW_KEY_E && action == GLFW_PRESS) {
+            generalInfos->mounting  = !generalInfos->mounting;
+        }
+    }
+}
+
+static void mouse_button_callback(GLFWwindow* /*window*/, int /*button*/, int /*action*/, int /*mods*/)
+{
+}
+
+static void scroll_callback(GLFWwindow* /*window*/, double /*xoffset*/, double /*yoffset*/)
+{
+}
+
+static void cursor_position_callback(GLFWwindow* /*window*/, double xpos, double ypos)
+{
+    /* MOUSE */
+    double d_x = xpos - generalInfos->previous_x;
+    double d_y = ypos - generalInfos->previous_y;
+
+    generalInfos->previous_x = xpos;
+    generalInfos->previous_y = ypos;
+
     // trackball camera events
-    if(!generalInfos->freeView)
-    {
+    if (!generalInfos->freeView) {
         float rotationX = d_y * generalInfos->sensitivity + glm::degrees(generalInfos->t_camera->getAngleX());
         float rotationY = d_x * generalInfos->sensitivity + glm::degrees(generalInfos->t_camera->getAngleY());
 
@@ -477,6 +452,42 @@ void HandleEvents()
 
         generalInfos->t_camera->rotateLeft(rotationX);
         generalInfos->t_camera->rotateUp(rotationY);
+    }
+
+    // freefly camera events
+    else {
+
+        float rotationX = -generalInfos->sensitivity * d_x + glm::degrees(generalInfos->f_camera->getAnglePhi());
+        float rotationY = -generalInfos->sensitivity * d_y + glm::degrees(generalInfos->f_camera->getAngleTheta());
+
+        if (rotationY > generalInfos->cameraMaxDegAngle)
+            rotationY = generalInfos->cameraMaxDegAngle;
+        if (rotationY < generalInfos->cameraMinDegAngle)
+            rotationY = generalInfos->cameraMinDegAngle;
+
+        generalInfos->f_camera->rotateLeft(rotationX);
+        generalInfos->f_camera->rotateUp(rotationY);
+
+    }
+}
+
+static void size_callback(GLFWwindow* /*window*/, int width, int height)
+{
+    window_width  = width;
+    window_height = height;
+}
+
+float randomFloat(float limit)
+{
+    return static_cast<float>(rand()) / static_cast<float>(RAND_MAX / limit);
+}
+
+void HandleContinuousEvents()
+{
+
+    // trackball camera events
+    if(!generalInfos->freeView)
+    {
 
         /* KEYBOARD */
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
@@ -496,26 +507,6 @@ void HandleEvents()
 
     // freefly camera events
     else {
-
-        // keys to change mouting wagon state
-        if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS && generalInfos->eReleased) {
-            generalInfos->mounting  = !generalInfos->mounting;
-            generalInfos->eReleased = false;
-        }
-        else if (glfwGetKey(window, GLFW_KEY_E) == GLFW_RELEASE) {
-            generalInfos->eReleased = true;
-        }
-
-        float rotationX = -generalInfos->sensitivity * d_x + glm::degrees(generalInfos->f_camera->getAnglePhi());
-        float rotationY = -generalInfos->sensitivity * d_y + glm::degrees(generalInfos->f_camera->getAngleTheta());
-
-        if (rotationY > generalInfos->cameraMaxDegAngle)
-            rotationY = generalInfos->cameraMaxDegAngle;
-        if (rotationY < generalInfos->cameraMinDegAngle)
-            rotationY = generalInfos->cameraMinDegAngle;
-
-        generalInfos->f_camera->rotateLeft(rotationX);
-        generalInfos->f_camera->rotateUp(rotationY);
 
         if(!generalInfos->mounting){
             /* KEYBOARD */
@@ -858,7 +849,8 @@ int main(int argc, char* argv[])
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window)) {
         /* EVENTS */
-        HandleEvents();
+        glfwPollEvents();
+        HandleContinuousEvents();
 
         /* RENDERING */
 

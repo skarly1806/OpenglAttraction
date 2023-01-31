@@ -79,7 +79,7 @@ namespace glimac {
         void SetPosition(glm::vec3 pos)
         {
             m_Position = pos;
-            computeDirectionVectors();
+            //computeDirectionVectors();
         }
 
         float getElevation(){

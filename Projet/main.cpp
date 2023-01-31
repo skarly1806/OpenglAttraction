@@ -257,8 +257,8 @@ public:
         indexPos = 0;
 
         speed = 0.f;
-        minSpeed = 0.5f;
-        maxSpeed = 2.f;
+        minSpeed = 0.8f;
+        maxSpeed = 6.f;
 
         Position = glm::vec3(0, 0, 0);
     }
@@ -535,9 +535,9 @@ void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo, glimac::Cylindre 
         glm::vec3 cylinderDirection = glm::vec3(0, 0, 1);
 
         float angle = glm::radians(180.f); // set a 180 au cas ou parallele et opposés
-        glm::vec3 axis = glm::cross(cylinderDirection, direction);
-        if (glm::length(axis) > 0.1f)
-            angle = glm::asin(glm::length(axis));
+        glm::vec3 axis = glm::cross(cylinderDirection, direction); // axis around which to turn
+        if (glm::length(axis) > 0.01f)
+            angle = glm::acos(glm::dot(cylinderDirection, direction)); // glm::asin(glm::length(axis));
         else{ // si les vecteurs sont paralleles
             // si dans le meme sens, pas de changement
             if (glm::dot(glm::normalize(cylinderDirection), glm::normalize(direction)) >= 0.f) angle = 0.f;
@@ -570,7 +570,7 @@ void DrawWagon(GeneralInfos* generalInfos, GLuint vbo){
 
         //gestion vitesse
         if(direction.y > 0.f){
-            wagon->speed = (wagon->speed - 0.01f > wagon->minSpeed) ? wagon->speed - 0.01f : wagon->minSpeed;
+            wagon->speed = (wagon->speed - 0.02f > wagon->minSpeed) ? wagon->speed - 0.02f : wagon->minSpeed;
         }
         else if(direction.y < 0.f){
             wagon->speed = (wagon->speed + 0.02f < wagon->maxSpeed) ? wagon->speed + 0.02f : wagon->maxSpeed;
@@ -596,8 +596,8 @@ void DrawWagon(GeneralInfos* generalInfos, GLuint vbo){
     glm::vec3 wagonDirection = glm::vec3(1, 0, 0);
     float     angle = glm::radians(180.f); // set a 180 au cas ou parallele et opposés
     glm::vec3 axis  = glm::cross(wagonDirection, direction);
-    if (glm::length(axis) > 0.1f)
-        angle = glm::asin(glm::length(axis));
+    if (glm::length(axis) > 0.01f)
+        angle = glm::acos(glm::dot(wagonDirection, direction)); // glm::asin(glm::length(axis));
     else { // si les vecteurs sont paralleles
         // si dans le meme sens, pas de changement
         if (glm::dot(glm::normalize(wagonDirection), glm::normalize(direction)) >= 0.f)
@@ -725,20 +725,38 @@ int main(int argc, char* argv[])
 
     // set circuit  infos
     std::vector<glm::vec3> circuit;
-    circuit.push_back(glm::vec3(0, 0, 0));
-    circuit.push_back(glm::vec3(2, 0, 0));
-    circuit.push_back(glm::vec3(2.5, 0.5, 0));
-    circuit.push_back(glm::vec3(3.5, 0.5, 0));
-    circuit.push_back(glm::vec3(5.5, 2.5, 0));
-    circuit.push_back(glm::vec3(5.5, 2.5, 1));
-    circuit.push_back(glm::vec3(3.5, 0.5, 1));
-    circuit.push_back(glm::vec3(2.5, 0.5, 1));
-    circuit.push_back(glm::vec3(1.5, 0, 1));
-    circuit.push_back(glm::vec3(0, 0, 1));
-    generalInfos->circuit->CircuitParts    = circuit;
-    generalInfos->circuit->NbCircuitPoints = 10;
+    circuit.push_back(glm::vec3(-5, 0, 0));
+    circuit.push_back(glm::vec3(-5, 0, -3));
 
-    for (int i = 0; i < generalInfos->circuit->NbCircuitPoints; i++) {
+    circuit.push_back(glm::vec3(-5, 3, -5));
+    circuit.push_back(glm::vec3(0, 3, -5));
+    circuit.push_back(glm::vec3(1, 3.5, -5));
+    circuit.push_back(glm::vec3(2, 4.5, -5));
+    circuit.push_back(glm::vec3(3.5, 5, -5));
+    circuit.push_back(glm::vec3(4.5, 6, -5));
+    circuit.push_back(glm::vec3(4.5, 6.8, -5));
+    circuit.push_back(glm::vec3(4, 8, -5));
+    circuit.push_back(glm::vec3(3.5, 8.5, -5));
+
+    circuit.push_back(glm::vec3(0, 9.5, -5));
+
+    circuit.push_back(glm::vec3(-3.5, 8.5, -5));
+    circuit.push_back(glm::vec3(-4, 8, -5));
+    circuit.push_back(glm::vec3(-4.5, 6.8, -5));
+    circuit.push_back(glm::vec3(-4.5, 6, -5));
+    circuit.push_back(glm::vec3(-3.5, 5, -5));
+    circuit.push_back(glm::vec3(0, 3, -4));
+
+    circuit.push_back(glm::vec3(3, 3, -4));
+    circuit.push_back(glm::vec3(5, 1.5, -4));
+
+    circuit.push_back(glm::vec3(7, 0, 0));
+
+    generalInfos->circuit->CircuitParts    = circuit;
+    generalInfos->circuit->NbCircuitPoints = circuit.size();
+
+    for (int i = 0; i < generalInfos->circuit->NbCircuitPoints; i++)
+    {
         generalInfos->circuit->CircuitColors.push_back(glm::vec3(randomFloat(1.f), randomFloat(1.f), randomFloat(1.f)));
     }
 

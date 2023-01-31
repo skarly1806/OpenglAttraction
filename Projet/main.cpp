@@ -51,7 +51,7 @@ float randomFloat(float limit)
     return static_cast<float>(rand()) / static_cast<float>(RAND_MAX / limit);
 }
 
-
+/* STRUCTURES */
 struct Material {
 private:
     GLint uMVPMatrix_gl;
@@ -408,7 +408,12 @@ public:
     }
 };
 
-void HandleEvents(GLFWwindow* window, GeneralInfos* generalInfos)
+/* GENERAL POINTERS */
+GLFWwindow*   window;
+GeneralInfos* generalInfos;
+
+/* METHODS */
+void HandleEvents()
 {
     glfwPollEvents();
 
@@ -528,7 +533,7 @@ void HandleEvents(GLFWwindow* window, GeneralInfos* generalInfos)
     }
 }
 
-void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo, glimac::Cylindre cylindre)
+void CircuitGeneration(GLuint vbo, glimac::Cylindre cylindre)
 {
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
     glBufferData(GL_ARRAY_BUFFER, cylindre.getVertexCount() * sizeof(glimac::ShapeVertex), cylindre.getDataPointer(), GL_STATIC_DRAW);
@@ -567,7 +572,7 @@ void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo, glimac::Cylindre 
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void DrawWagon(GeneralInfos* generalInfos, GLuint vbo){
+void DrawWagon(GLuint vbo){
     // préparations
     Wagon* wagon = generalInfos->wagon;
     Circuit* circuit = generalInfos->circuit;
@@ -633,7 +638,7 @@ void DrawWagon(GeneralInfos* generalInfos, GLuint vbo){
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-void DrawFloor(GeneralInfos* generalInfos, GLuint vbo){
+void DrawFloor(GLuint vbo){
     glm::mat4 floorMVMatrix = generalInfos->globalMVMatrix;
     floorMVMatrix           = glm::translate(floorMVMatrix, glm::vec3(0, generalInfos->floorElevation, 0));
     floorMVMatrix           = glm::rotate(floorMVMatrix, glm::radians(90.f), glm::vec3(1, 0, 0));
@@ -650,7 +655,7 @@ void DrawFloor(GeneralInfos* generalInfos, GLuint vbo){
 
 }
 
-void DrawSky(GeneralInfos* generalInfos, GLuint vbo){
+void DrawSky(GLuint vbo){
     glm::mat4 SkyMVMatrix = generalInfos->globalMVMatrix;
     SkyMVMatrix             = glm::translate(SkyMVMatrix, glm::vec3(0, generalInfos->floorElevation + generalInfos->skyElevation, 0));
     SkyMVMatrix             = glm::rotate(SkyMVMatrix, glm::radians(-90.f), glm::vec3(1, 0, 0));
@@ -666,7 +671,8 @@ void DrawSky(GeneralInfos* generalInfos, GLuint vbo){
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
 
-    int main(int argc, char* argv[])
+/* MAIN */
+int main(int argc, char* argv[])
 {
 
     /* Initialize the library */
@@ -682,7 +688,7 @@ void DrawSky(GeneralInfos* generalInfos, GLuint vbo){
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 #endif
-    GLFWwindow* window = glfwCreateWindow(window_width, window_height, "Projet", nullptr, nullptr);
+    window = glfwCreateWindow(window_width, window_height, "Projet", nullptr, nullptr);
     if (!window) {
         glfwTerminate();
         return -1;
@@ -715,7 +721,7 @@ void DrawSky(GeneralInfos* generalInfos, GLuint vbo){
     /* CREATE ALL THINGS */
 
     // infos générales
-    GeneralInfos* generalInfos = new GeneralInfos(program.getGLId(), applicationPath);
+    generalInfos = new GeneralInfos(program.getGLId(), applicationPath);
 
     // les lumieres
     // set ambiant light infos and charge in shaders
@@ -848,7 +854,7 @@ void DrawSky(GeneralInfos* generalInfos, GLuint vbo){
     /* Loop until the user closes the window */
     while (!glfwWindowShouldClose(window)) {
         /* EVENTS */
-        HandleEvents(window, generalInfos);
+        HandleEvents();
 
         /* RENDERING */
 
@@ -893,14 +899,14 @@ void DrawSky(GeneralInfos* generalInfos, GLuint vbo){
         pointLight2->ChargeGLints(light2Pos_vs);
 
         /* GENERATION OF CIRCUIT */
-        CircuitGeneration(generalInfos, vbo, cylindre);
+        CircuitGeneration(vbo, cylindre);
 
         // Dessin du sol et ciel
-        DrawFloor(generalInfos, vbo);
-        DrawSky(generalInfos, vbo);
+        DrawFloor(vbo);
+        DrawSky(vbo);
 
         // Dessin du Wagon
-        DrawWagon(generalInfos, vbo);
+        DrawWagon(vbo);
 
         // Positionnement de la sphère représentant la lumière 1
         light1MVMatrix = glm::translate(light1MVMatrix, glm::vec3(light1Pos)); // Translation * Rotation * Translation
@@ -933,27 +939,6 @@ void DrawSky(GeneralInfos* generalInfos, GLuint vbo){
         glBufferData(GL_ARRAY_BUFFER, sphere.getVertexCount() * sizeof(glimac::ShapeVertex), sphere.getDataPointer(), GL_STATIC_DRAW);
         glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
         glBindBuffer(GL_ARRAY_BUFFER, 0);
-
-        // /* LUNES */
-
-        // for (int i = 0; i < generalInfos->NbMoons; ++i) {
-        //     // Transformations nécessaires pour la Lune
-        //     glm::mat4 moonMVMatrix = glm::rotate(generalInfos->globalMVMatrix, (1 + randomTransform[i][0] + randomTransform[i][1] + randomTransform[i][2]) * (float)glfwGetTime(), glm::cross(glm::vec3(1, 1, 1), randomTransform[i])); // Translation * Rotation
-        //     moonMVMatrix           = glm::translate(moonMVMatrix, randomTransform[i]);                                                                                                                                    // Translation * Rotation * Translation
-        //     moonMVMatrix           = glm::scale(moonMVMatrix, glm::vec3(0.2, 0.2, 0.2));                                                                                                                                  // Translation * Rotation * Translation * Scale
-
-        //     generalInfos->MoonMaterials[i]->ChargeMatrices(moonMVMatrix, generalInfos->projMatrix);
-
-        //     // glUniform3f(uLightIntensity, .2, .2, .2);
-        //     // glUniform3fv(uLightPos_vs, 1, glm::value_ptr(light1Pos_vs));
-        //     // glUniform3f(uKd, .2, 0, 0);
-        //     // glUniform3f(uKs, randomColor[i].r * .8, randomColor[i].g *.5, randomColor[i].b * .2);
-        //     // glUniform1f(uShininess, 2);
-
-        //     generalInfos->MoonMaterials[i]->ChargeGLints();
-
-        //     glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
-        // }
 
         glBindVertexArray(0);
 

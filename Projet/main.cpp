@@ -196,18 +196,15 @@ public:
 
     DirLight(GLint prog_GLid, int i)
     {
-        std::string basename = "uDirLights[";
-        basename.push_back(char(i));
-        basename.push_back(']');
-        basename.push_back('.');
+        char        varname[50] = "";
+        sprintf(varname, "uDirLights[%d].direction", i);
+        direction_gl = glGetUniformLocation(prog_GLid, varname);
 
-        std::string directionname = basename + "direction";
-        std::string intensityname = basename + "intensity";
-        std::string colorname = basename + "color";
+        sprintf(varname, "uDirLights[%d].intensity", i);
+        intensity_gl = glGetUniformLocation(prog_GLid, varname);
 
-        direction_gl = glGetUniformLocation(prog_GLid, directionname.c_str());
-        intensity_gl = glGetUniformLocation(prog_GLid, intensityname.c_str());
-        color_gl     = glGetUniformLocation(prog_GLid, colorname.c_str());
+        sprintf(varname, "uDirLights[%d].color", i);
+        color_gl = glGetUniformLocation(prog_GLid, varname);
     }
 
     void ChargeGLints()
@@ -698,20 +695,31 @@ int main(int argc, char* argv[])
     // set ambiant light infos and charge in shaders
     generalInfos->AmbiantLight = glm::vec3(0.2, 0.2, 0.2);
 
+    // set dirlight info
+    generalInfos->DirLights.push_back(new DirLight(program.getGLId(), 0));
+    DirLight* dirlight1     = generalInfos->DirLights[0];
+    dirlight1->direction     = glm::vec3(-1, -1, -1);
+    dirlight1->intensity    = .6f;
+    dirlight1->color        = glm::vec3(1, 1, 1);
+
     // set point light infos
-    int numPL = 0;
-    generalInfos->PointLights.push_back(new PointLight(program.getGLId(), numPL));
-    PointLight* myPointLight        = generalInfos->PointLights[numPL];
-    myPointLight->position          = glm::vec3(2, 4, 0);
-    myPointLight->intensity         = 2.f;
-    myPointLight->color             = glm::vec3(1, 1, 1);
+    generalInfos->PointLights.push_back(new PointLight(program.getGLId(), 0));
+    PointLight* pointlight1 = generalInfos->PointLights[0];
+    pointlight1->position   = glm::vec3(2, 10, 3);
+    pointlight1->intensity  = 2.f;
+    pointlight1->color      = glm::vec3(1, 0, 0);
 
+    generalInfos->PointLights.push_back(new PointLight(program.getGLId(), 1));
+    PointLight* pointlight2 = generalInfos->PointLights[1];
+    pointlight2->position   = glm::vec3(2, 10, -3);
+    pointlight2->intensity  = 2.f;
+    pointlight2->color      = glm::vec3(0, 0, 1);
 
+    //Material* myLamp = ;
+    generalInfos->Lampes.push_back(pointlight1->GenerateLampe(program.getGLId()));
+    generalInfos->Lampes.push_back(pointlight2->GenerateLampe(program.getGLId()));
 
-    Material* myLamp = myPointLight->GenerateLampe(program.getGLId());
-    generalInfos->Lampes.push_back(myLamp);
-
-    generalInfos->NbLights = glm::vec2(0, 1);
+    generalInfos->NbLights = glm::vec2(1, 2); // nb dirlights / nb pointlights
 
     generalInfos->ChargeGLints();
 
@@ -762,9 +770,6 @@ int main(int argc, char* argv[])
     // Création d'un cylindre
     glimac::Cylindre cylindre(1, .03, 20, 20);
 
-    // Création d'un cone
-    glimac::Cone cone(1, 0.5, 30, 5);
-
     /* VBO + VAO */
     // création du VBO
     GLuint vbo;
@@ -794,20 +799,6 @@ int main(int argc, char* argv[])
     glBindVertexArray(0);
 
 
-    /* GENERATE MOONS */
-    generalInfos->NbMoons = 0;
-    std::vector<glm::vec3> randomTransform;
-
-    for (int i = 0; i < generalInfos->NbMoons; ++i) {
-        Material* new_moon = new Material(program.getGLId());
-        randomTransform.push_back(glm::sphericalRand(2.f));
-        new_moon->color         = glm::vec3(glm::linearRand(0.1f, 1.f) * .8, glm::linearRand(0.1f, 1.f) * .5, glm::linearRand(0.1f, 1.f) * .2);
-        new_moon->specularIntensity  = 0.2f;
-        new_moon->shininess  = randomFloat(20.f);
-        new_moon->hasTexture = false;
-        generalInfos->MoonMaterials.push_back(new_moon);
-    }
-
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     /* Loop until the user closes the window */
@@ -822,6 +813,7 @@ int main(int argc, char* argv[])
             ViewMatrix = generalInfos->t_camera->getViewMatrix();
         else
             ViewMatrix = generalInfos->f_camera->getViewMatrix();
+
         generalInfos->ViewPos = glm::vec3(ViewMatrix[0][0], ViewMatrix[0][1], ViewMatrix[0][2]);
         generalInfos->ChargeGLints();
 
@@ -831,9 +823,6 @@ int main(int argc, char* argv[])
         // get camera matrix
         generalInfos->globalMVMatrix = ViewMatrix;
 
-        // earth rotates on itself
-        //glm::mat4 earthMVMatrix = generalInfos->globalMVMatrix; // glm::rotate(generalInfos->globalMVMatrix, (float)glfwGetTime(), glm::vec3(0, 1, 0)); // Translation * Rotation
-
         // send Matrixes values to shader
         circuitMaterial->ChargeMatrices(generalInfos->globalMVMatrix, generalInfos->projMatrix);
 
@@ -841,14 +830,23 @@ int main(int argc, char* argv[])
 
         /* GESTION LUMIERE */
 
-        PointLight* currentLight = generalInfos->PointLights[0];
+        DirLight* dirlight1 = generalInfos->DirLights[0];
 
-        glm::vec3 lightPos(currentLight->position.x, currentLight->position.y * (glm::cos((float)glfwGetTime()) * glm::sin((float)glfwGetTime())), currentLight->position.z); // position mouvement de spirale
-        glm::mat4 lightMVMatrix = glm::rotate(generalInfos->globalMVMatrix, (float)glfwGetTime(), glm::vec3(0, 1, 0));                                                        // Translation * Rotation
-        glm::vec3 lightPos_vs(lightMVMatrix * glm::vec4(lightPos, 1));
+        PointLight* pointLight1 = generalInfos->PointLights[0];
+        PointLight* pointLight2 = generalInfos->PointLights[1];
+
+        glm::vec3 light1Pos(pointLight1->position.x, (pointLight1->position.y * glm::cos((float)glfwGetTime()) * glm::sin((float)glfwGetTime()) < generalInfos->floorElevation) ? generalInfos->floorElevation + 0.1f : pointLight1->position.y * glm::cos((float)glfwGetTime()) * glm::sin((float)glfwGetTime()), pointLight1->position.z);
+        glm::mat4 light1MVMatrix = glm::rotate(generalInfos->globalMVMatrix, (float)glfwGetTime(), glm::vec3(0, 1, 0));
+        glm::vec3 light1Pos_vs(light1MVMatrix * glm::vec4(light1Pos, 1));
+
+        glm::vec3 light2Pos(pointLight1->position.x, (pointLight2->position.y * glm::cos((float)glfwGetTime()) * glm::sin((float)glfwGetTime()) < generalInfos->floorElevation) ? generalInfos->floorElevation + 0.1f : pointLight2->position.y * glm::cos((float)glfwGetTime()) * glm::sin((float)glfwGetTime()), pointLight2->position.z);
+        glm::mat4 light2MVMatrix = glm::rotate(generalInfos->globalMVMatrix, (float)glfwGetTime(), glm::vec3(0, 1, 0));
+        glm::vec3 light2Pos_vs(light2MVMatrix * glm::vec4(light2Pos, 1));
 
         // /* CHARGEMENT LUMIERE */
-        currentLight->ChargeGLints(lightPos_vs);
+        dirlight1->ChargeGLints();
+        pointLight1->ChargeGLints(light1Pos_vs);
+        pointLight2->ChargeGLints(light2Pos_vs);
 
         /* GENERATION OF CIRCUIT */
         CircuitGeneration(generalInfos, vbo, cylindre);
@@ -860,42 +858,58 @@ int main(int argc, char* argv[])
         // Dessin du Wagon
         DrawWagon(generalInfos, vbo);
 
-        // Positionnement de la sphère représentant la lumière
-        lightMVMatrix = glm::translate(lightMVMatrix, glm::vec3(lightPos));  // Translation * Rotation * Translation
-        lightMVMatrix = glm::scale(lightMVMatrix, glm::vec3(.04, .04, .04)); // Translation * Rotation * Translation * Scale
+        // Positionnement de la sphère représentant la lumière 1
+        light1MVMatrix = glm::translate(light1MVMatrix, glm::vec3(light1Pos)); // Translation * Rotation * Translation
+        light1MVMatrix = glm::scale(light1MVMatrix, glm::vec3(.04, .04, .04)); // Translation * Rotation * Translation * Scale
 
-        myLamp = generalInfos->Lampes[0];
-        myLamp->ChargeMatrices(lightMVMatrix, generalInfos->projMatrix);
+        Material* lamp1 = generalInfos->Lampes[0];
+        lamp1->ChargeMatrices(light1MVMatrix, generalInfos->projMatrix);
 
         /* CHARGEMENT DE LA LAMPE */
-        myLamp->ChargeGLints();
+        lamp1->ChargeGLints();
 
-        // Dessin de la sphère représentant la lumière
+        // Dessin de la sphère représentant la lumière 1
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
         glBufferData(GL_ARRAY_BUFFER, sphere.getVertexCount() * sizeof(glimac::ShapeVertex), sphere.getDataPointer(), GL_STATIC_DRAW);
         glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-        /* LUNES */
+        // Positionnement de la sphère représentant la lumière 2
+        light2MVMatrix = glm::translate(light2MVMatrix, glm::vec3(light2Pos)); // Translation * Rotation * Translation
+        light2MVMatrix = glm::scale(light2MVMatrix, glm::vec3(.04, .04, .04)); // Translation * Rotation * Translation * Scale
 
-        for (int i = 0; i < generalInfos->NbMoons; ++i) {
-            // Transformations nécessaires pour la Lune
-            glm::mat4 moonMVMatrix = glm::rotate(generalInfos->globalMVMatrix, (1 + randomTransform[i][0] + randomTransform[i][1] + randomTransform[i][2]) * (float)glfwGetTime(), glm::cross(glm::vec3(1, 1, 1), randomTransform[i])); // Translation * Rotation
-            moonMVMatrix           = glm::translate(moonMVMatrix, randomTransform[i]);                                                                                                                                    // Translation * Rotation * Translation
-            moonMVMatrix           = glm::scale(moonMVMatrix, glm::vec3(0.2, 0.2, 0.2));                                                                                                                                  // Translation * Rotation * Translation * Scale
+        Material* lamp2 = generalInfos->Lampes[1];
+        lamp2->ChargeMatrices(light2MVMatrix, generalInfos->projMatrix);
 
-            generalInfos->MoonMaterials[i]->ChargeMatrices(moonMVMatrix, generalInfos->projMatrix);
+        /* CHARGEMENT DE LA LAMPE */
+        lamp2->ChargeGLints();
 
-            // glUniform3f(uLightIntensity, .2, .2, .2);
-            // glUniform3fv(uLightPos_vs, 1, glm::value_ptr(lightPos_vs));
-            // glUniform3f(uKd, .2, 0, 0);
-            // glUniform3f(uKs, randomColor[i].r * .8, randomColor[i].g *.5, randomColor[i].b * .2);
-            // glUniform1f(uShininess, 2);
+        // Dessin de la sphère représentant la lumière 2
+        glBindBuffer(GL_ARRAY_BUFFER, vbo);
+        glBufferData(GL_ARRAY_BUFFER, sphere.getVertexCount() * sizeof(glimac::ShapeVertex), sphere.getDataPointer(), GL_STATIC_DRAW);
+        glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
 
-            generalInfos->MoonMaterials[i]->ChargeGLints();
+        // /* LUNES */
 
-            glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
-        }
+        // for (int i = 0; i < generalInfos->NbMoons; ++i) {
+        //     // Transformations nécessaires pour la Lune
+        //     glm::mat4 moonMVMatrix = glm::rotate(generalInfos->globalMVMatrix, (1 + randomTransform[i][0] + randomTransform[i][1] + randomTransform[i][2]) * (float)glfwGetTime(), glm::cross(glm::vec3(1, 1, 1), randomTransform[i])); // Translation * Rotation
+        //     moonMVMatrix           = glm::translate(moonMVMatrix, randomTransform[i]);                                                                                                                                    // Translation * Rotation * Translation
+        //     moonMVMatrix           = glm::scale(moonMVMatrix, glm::vec3(0.2, 0.2, 0.2));                                                                                                                                  // Translation * Rotation * Translation * Scale
+
+        //     generalInfos->MoonMaterials[i]->ChargeMatrices(moonMVMatrix, generalInfos->projMatrix);
+
+        //     // glUniform3f(uLightIntensity, .2, .2, .2);
+        //     // glUniform3fv(uLightPos_vs, 1, glm::value_ptr(light1Pos_vs));
+        //     // glUniform3f(uKd, .2, 0, 0);
+        //     // glUniform3f(uKs, randomColor[i].r * .8, randomColor[i].g *.5, randomColor[i].b * .2);
+        //     // glUniform1f(uShininess, 2);
+
+        //     generalInfos->MoonMaterials[i]->ChargeGLints();
+
+        //     glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
+        // }
 
         glBindVertexArray(0);
 

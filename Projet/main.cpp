@@ -368,6 +368,10 @@ public:
     bool spaceReleased = true;
     bool eReleased = true;
 
+    // basic objects
+    glimac::Sphere* sphere;
+    glimac::Cylindre* cylindre;
+
     GeneralInfos(GLint prog_GLid, glimac::FilePath applicationPath)
     {
         AmbiantLight_gl = glGetUniformLocation(prog_GLid, "uAmbiantLight");
@@ -398,6 +402,12 @@ public:
         t_camera = new glimac::TrackballCamera();
         f_camera = new glimac::FreeFlyCamera();
         freeView = false;
+
+        // Création d'une sphère
+        sphere = new glimac::Sphere(1, 64, 32);
+
+        // Création d'un cylindre
+        cylindre = new glimac::Cylindre(1, .03, 20, 20);
     }
 
     void ChargeGLints()
@@ -533,10 +543,10 @@ void HandleEvents()
     }
 }
 
-void CircuitGeneration(GLuint vbo, glimac::Cylindre cylindre)
+void CircuitGeneration(GLuint vbo)
 {
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    glBufferData(GL_ARRAY_BUFFER, cylindre.getVertexCount() * sizeof(glimac::ShapeVertex), cylindre.getDataPointer(), GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, generalInfos->cylindre->getVertexCount() * sizeof(glimac::ShapeVertex), generalInfos->cylindre->getDataPointer(), GL_STATIC_DRAW);
 
     Circuit * circuit = generalInfos->circuit;
 
@@ -567,7 +577,7 @@ void CircuitGeneration(GLuint vbo, glimac::Cylindre cylindre)
         circuit->CircuitMaterial->ChargeMatrices(circuitMVMatrix, generalInfos->projMatrix);
         circuit->CircuitMaterial->ChargeGLints();
 
-        glDrawArrays(GL_TRIANGLES, 0, cylindre.getVertexCount());
+        glDrawArrays(GL_TRIANGLES, 0, generalInfos->cylindre->getVertexCount());
     }
     glBindBuffer(GL_ARRAY_BUFFER, 0);
 }
@@ -814,12 +824,6 @@ int main(int argc, char* argv[])
     generalInfos->projMatrix = projMatrix;
     generalInfos->globalMVMatrix = globalMVMatrix;
 
-    // Création d'une sphère
-    glimac::Sphere sphere(1, 64, 32);
-
-    // Création d'un cylindre
-    glimac::Cylindre cylindre(1, .03, 20, 20);
-
     /* VBO + VAO */
     // création du VBO
     GLuint vbo;
@@ -899,7 +903,7 @@ int main(int argc, char* argv[])
         pointLight2->ChargeGLints(light2Pos_vs);
 
         /* GENERATION OF CIRCUIT */
-        CircuitGeneration(vbo, cylindre);
+        CircuitGeneration(vbo);
 
         // Dessin du sol et ciel
         DrawFloor(vbo);
@@ -920,8 +924,8 @@ int main(int argc, char* argv[])
 
         // Dessin de la sphère représentant la lumière 1
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, sphere.getVertexCount() * sizeof(glimac::ShapeVertex), sphere.getDataPointer(), GL_STATIC_DRAW);
-        glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
+        glBufferData(GL_ARRAY_BUFFER, generalInfos->sphere->getVertexCount() * sizeof(glimac::ShapeVertex), generalInfos->sphere->getDataPointer(), GL_STATIC_DRAW);
+        glDrawArrays(GL_TRIANGLES, 0, generalInfos->sphere->getVertexCount());
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         // Positionnement de la sphère représentant la lumière 2
@@ -936,8 +940,8 @@ int main(int argc, char* argv[])
 
         // Dessin de la sphère représentant la lumière 2
         glBindBuffer(GL_ARRAY_BUFFER, vbo);
-        glBufferData(GL_ARRAY_BUFFER, sphere.getVertexCount() * sizeof(glimac::ShapeVertex), sphere.getDataPointer(), GL_STATIC_DRAW);
-        glDrawArrays(GL_TRIANGLES, 0, sphere.getVertexCount());
+        glBufferData(GL_ARRAY_BUFFER, generalInfos->sphere->getVertexCount() * sizeof(glimac::ShapeVertex), generalInfos->sphere->getDataPointer(), GL_STATIC_DRAW);
+        glDrawArrays(GL_TRIANGLES, 0, generalInfos->sphere->getVertexCount());
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         glBindVertexArray(0);

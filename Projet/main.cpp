@@ -100,7 +100,6 @@ public:
             char varname[50] = "";
             sprintf(varname, "uMaterial.textures[%d]", i);
             uTextures_gl[i] = glGetUniformLocation(prog_GLid, varname);
-            printf("%s\n", varname);
         }
     }
 
@@ -361,9 +360,13 @@ public:
     double previous_x;
     double previous_y;
 
+    // state
+    bool mounting = false;
+
     // keys inputs
     bool enterReleased = true;
     bool spaceReleased = true;
+    bool eReleased = true;
 
     GeneralInfos(GLint prog_GLid, glimac::FilePath applicationPath)
     {
@@ -471,6 +474,16 @@ void HandleEvents(GLFWwindow* window, GeneralInfos* generalInfos)
 
     // freefly camera events
     else {
+
+        // keys to change mouting wagon state
+        if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS && generalInfos->eReleased) {
+            generalInfos->mounting  = !generalInfos->mounting;
+            generalInfos->eReleased = false;
+        }
+        else if (glfwGetKey(window, GLFW_KEY_E) == GLFW_RELEASE) {
+            generalInfos->eReleased = true;
+        }
+
         float rotationX = -generalInfos->sensitivity * d_x + glm::degrees(generalInfos->f_camera->getAnglePhi());
         float rotationY = -generalInfos->sensitivity * d_y + glm::degrees(generalInfos->f_camera->getAngleTheta());
 
@@ -482,22 +495,29 @@ void HandleEvents(GLFWwindow* window, GeneralInfos* generalInfos)
         generalInfos->f_camera->rotateLeft(rotationX);
         generalInfos->f_camera->rotateUp(rotationY);
 
-        /* KEYBOARD */
-        if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-            generalInfos->f_camera->moveFront(0.1f);
-        }
-        if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-            generalInfos->f_camera->moveFront(-0.1f);
-        }
-        if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-            generalInfos->f_camera->moveLeft(0.1f);
-        }
-        if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-            generalInfos->f_camera->moveLeft(-0.1f);
-        }
+        if(!generalInfos->mounting){
+            /* KEYBOARD */
+            if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+                generalInfos->f_camera->moveFront(0.1f);
+            }
+            if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+                generalInfos->f_camera->moveFront(-0.1f);
+            }
+            if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+                generalInfos->f_camera->moveLeft(0.1f);
+            }
+            if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+                generalInfos->f_camera->moveLeft(-0.1f);
+            }
 
-        if (generalInfos->f_camera->getElevation() != generalInfos->floorElevation + generalInfos->characterHeight)
-            generalInfos->f_camera->setElevation(generalInfos->floorElevation + generalInfos->characterHeight);
+            if (generalInfos->f_camera->getElevation() != generalInfos->floorElevation + generalInfos->characterHeight)
+                generalInfos->f_camera->setElevation(generalInfos->floorElevation + generalInfos->characterHeight);
+        }
+        else{
+            glm::vec3 camPos = generalInfos->wagon->Position;
+            camPos.y += generalInfos->characterHeight;
+            generalInfos->f_camera->SetPosition(camPos);
+        }
     }
 }
 

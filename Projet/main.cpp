@@ -341,6 +341,9 @@ public:
     float floorElevation = -0.3f;
     float characterHeight = 0.6f;
 
+    Rectangle*  sky;
+    float skyElevation = 50.f;
+
     // camera
 
     glm::vec3 ViewPos; // position camera
@@ -376,12 +379,19 @@ public:
         AmbiantLight    = glm::vec3(0, 0, 0);
         NbMoons         = 0;
 
-        floor    = new Rectangle(prog_GLid, 20.f, 20.f, glm::vec3(0, 1, 0));
+        floor = new Rectangle(prog_GLid, 20.f, 20.f, glm::vec3(0, 1, 0));
+        sky = new Rectangle(prog_GLid, 100.f, 100.f, glm::vec3(0, 0, 1));
 
-        //chargement texture
+        // chargement texture
         floor->material->uTextures[0] = glimac::loadImage(applicationPath.dirPath() + "./assets/textures/herbe.jpg");
         floor->material->hasTexture   = true;
         floor->material->NbTextures   = 1;
+
+        sky->material->uTextures[0] = glimac::loadImage(applicationPath.dirPath() + "./assets/textures/BlueSky.jpg");
+        sky->material->uTextures[1]   = glimac::loadImage(applicationPath.dirPath() + "./assets/textures/CloudMap.jpg");
+        sky->material->hasTexture     = true;
+        sky->material->NbTextures     = 2;
+
         circuit  = new Circuit(prog_GLid);
         wagon = new Wagon(prog_GLid);
 
@@ -537,7 +547,7 @@ void CircuitGeneration(GeneralInfos* generalInfos, GLuint vbo, glimac::Cylindre 
         float angle = glm::radians(180.f); // set a 180 au cas ou parallele et opposés
         glm::vec3 axis = glm::cross(cylinderDirection, direction); // axis around which to turn
         if (glm::length(axis) > 0.01f)
-            angle = glm::acos(glm::dot(cylinderDirection, direction)); // glm::asin(glm::length(axis));
+            angle = glm::acos(glm::dot(cylinderDirection, direction));
         else{ // si les vecteurs sont paralleles
             // si dans le meme sens, pas de changement
             if (glm::dot(glm::normalize(cylinderDirection), glm::normalize(direction)) >= 0.f) angle = 0.f;
@@ -597,7 +607,7 @@ void DrawWagon(GeneralInfos* generalInfos, GLuint vbo){
     float     angle = glm::radians(180.f); // set a 180 au cas ou parallele et opposés
     glm::vec3 axis  = glm::cross(wagonDirection, direction);
     if (glm::length(axis) > 0.01f)
-        angle = glm::acos(glm::dot(wagonDirection, direction)); // glm::asin(glm::length(axis));
+        angle = glm::acos(glm::dot(wagonDirection, direction));
     else { // si les vecteurs sont paralleles
         // si dans le meme sens, pas de changement
         if (glm::dot(glm::normalize(wagonDirection), glm::normalize(direction)) >= 0.f)
@@ -640,7 +650,23 @@ void DrawFloor(GeneralInfos* generalInfos, GLuint vbo){
 
 }
 
-int main(int argc, char* argv[])
+void DrawSky(GeneralInfos* generalInfos, GLuint vbo){
+    glm::mat4 SkyMVMatrix = generalInfos->globalMVMatrix;
+    SkyMVMatrix             = glm::translate(SkyMVMatrix, glm::vec3(0, generalInfos->floorElevation + generalInfos->skyElevation, 0));
+    SkyMVMatrix             = glm::rotate(SkyMVMatrix, glm::radians(-90.f), glm::vec3(1, 0, 0));
+
+    // charge les infos
+    generalInfos->sky->material->ChargeMatrices(SkyMVMatrix, generalInfos->projMatrix);
+    generalInfos->sky->material->ChargeGLints();
+
+    // dessin
+    glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    glBufferData(GL_ARRAY_BUFFER, generalInfos->sky->numVertices * sizeof(glimac::ShapeVertex), &generalInfos->sky->vertices[0], GL_STATIC_DRAW);
+    glDrawElements(GL_TRIANGLES, generalInfos->sky->numIndices, GL_UNSIGNED_INT, generalInfos->sky->indices.data());
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+}
+
+    int main(int argc, char* argv[])
 {
 
     /* Initialize the library */
@@ -699,7 +725,7 @@ int main(int argc, char* argv[])
     generalInfos->DirLights.push_back(new DirLight(program.getGLId(), 0));
     DirLight* dirlight1     = generalInfos->DirLights[0];
     dirlight1->direction     = glm::vec3(-1, -1, -1);
-    dirlight1->intensity    = .6f;
+    dirlight1->intensity    = 1.f;
     dirlight1->color        = glm::vec3(1, 1, 1);
 
     // set point light infos
@@ -869,9 +895,9 @@ int main(int argc, char* argv[])
         /* GENERATION OF CIRCUIT */
         CircuitGeneration(generalInfos, vbo, cylindre);
 
-        // Dessin du sol
+        // Dessin du sol et ciel
         DrawFloor(generalInfos, vbo);
-
+        DrawSky(generalInfos, vbo);
 
         // Dessin du Wagon
         DrawWagon(generalInfos, vbo);

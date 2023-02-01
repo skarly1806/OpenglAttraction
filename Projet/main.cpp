@@ -263,20 +263,21 @@ public:
         float     decW   = 1 / width;
         float     decL   = 1 / length;
         glm::vec3 normal = glm::vec3(0, 1, 0);
-        for (int i = -width / 2; i < width / 2; i++) {
-            for (int j = -length / 2; j < length / 2; j++) {
+        for (int i = 0; i < width; i++) {
+            for (int j = 0; j < length; j++) {
                 vertices.push_back(glimac::ShapeVertex(glm::vec3(i, (randomize_elevation) ? randomFloat(0.4) : 0.f, j), normal, glm::vec2(i * decW, j * decL)));
             }
         }
 
         for (int j = 0; j < length - 1; j++) {
-            for (int i = 0; i < width; i++) {
-                indices.push_back(i + j * width);
-                indices.push_back(i + 1 + j * width);
-                indices.push_back(i + width + j * width);
-                indices.push_back(i + 1 + j * width);
-                indices.push_back(i + width + 1 + j * width);
-                indices.push_back(i + width + j * width);
+            int offset = j * width;
+            for (int i = 0; i < width - 1; i++) {
+                indices.push_back(i + width + offset);
+                indices.push_back(i + 1 + offset);
+                indices.push_back(i + offset);
+                indices.push_back(i + width + offset);
+                indices.push_back(i + width + 1 + offset);
+                indices.push_back(i + 1 + offset);
             }
         }
 
@@ -364,7 +365,7 @@ public:
         NbMoons         = 0;
 
         floor = new Rectangle(prog_GLid, 20.f, 20.f, true, glm::vec3(0, 1, 0));
-        sky = new Rectangle(prog_GLid, 100.f, 100.f, false, glm::vec3(0, 0, 1));
+        sky = new Rectangle(prog_GLid, 2, 2, false, glm::vec3(0, 0, 1));
 
         // chargement texture
         floor->material->uTextures[0] = glimac::loadImage(applicationPath.dirPath() + "./assets/textures/herbe.jpg");
@@ -647,8 +648,7 @@ void DrawWagon(GLuint vbo){
 
 void DrawFloor(GLuint vbo){
     glm::mat4 floorMVMatrix = generalInfos->globalMVMatrix;
-    floorMVMatrix           = glm::translate(floorMVMatrix, glm::vec3(0, generalInfos->floorElevation, 0));
-    //floorMVMatrix           = glm::rotate(floorMVMatrix, glm::radians(90.f), glm::vec3(1, 0, 0));
+    floorMVMatrix           = glm::translate(floorMVMatrix, glm::vec3(-10, generalInfos->floorElevation, -10));
 
     // charge les infos
     generalInfos->floor->material->ChargeMatrices(floorMVMatrix, generalInfos->projMatrix);
@@ -664,7 +664,8 @@ void DrawFloor(GLuint vbo){
 
 void DrawSky(GLuint vbo){
     glm::mat4 SkyMVMatrix = generalInfos->globalMVMatrix;
-    SkyMVMatrix             = glm::translate(SkyMVMatrix, glm::vec3(0, generalInfos->floorElevation + generalInfos->skyElevation, 0));
+    SkyMVMatrix           = glm::translate(SkyMVMatrix, glm::vec3(-50, generalInfos->floorElevation + generalInfos->skyElevation, -50));
+    SkyMVMatrix           = glm::scale(SkyMVMatrix, glm::vec3(100, 1, 100));
     //SkyMVMatrix             = glm::rotate(SkyMVMatrix, glm::radians(-90.f), glm::vec3(1, 0, 0));
 
     // charge les infos

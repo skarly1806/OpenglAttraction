@@ -24,6 +24,10 @@ const float PI = 3.141593;
 #define MAX_TEXTURES 2
 #define MAX_LIGHTS 10
 
+float randomFloat(float limit)
+{
+    return static_cast<float>(rand()) / static_cast<float>(RAND_MAX / limit);
+}
 
 /* STRUCTURES */
 struct Material {
@@ -248,36 +252,43 @@ public:
 struct Rectangle {
 public:
     std::vector<glimac::ShapeVertex> vertices;
-    std::vector<int>        indices;
-    unsigned int             numVertices;
-    unsigned int              numIndices;
+    std::vector<int>                 indices;
+    unsigned int                     numVertices;
+    unsigned int                     numIndices;
 
     Material* material;
 
-    Rectangle(GLint prog_GLid, float length, float height, glm::vec3 color = glm::vec3(1, 1, 1))
+    Rectangle(GLint prog_GLid, float width, float length, bool randomize_elevation, glm::vec3 color = glm::vec3(1, 1, 1))
     {
-        glm::vec3 normal = glm::vec3(0, 0, -1);
-        vertices.push_back(glimac::ShapeVertex(glm::vec3(-length / 2, -height / 2, 0), normal, glm::vec2(0, 0)));
-        vertices.push_back(glimac::ShapeVertex(glm::vec3(length / 2, -height / 2, 0), normal, glm::vec2(1, 0)));
-        vertices.push_back(glimac::ShapeVertex(glm::vec3(length / 2, height / 2, 0), normal, glm::vec2(1, 1)));
-        vertices.push_back(glimac::ShapeVertex(glm::vec3(-length / 2, height / 2, 0), normal, glm::vec2(0, 1)));
+        float     decW   = 1 / width;
+        float     decL   = 1 / length;
+        glm::vec3 normal = glm::vec3(0, 1, 0);
+        for (int i = -width / 2; i < width / 2; i++) {
+            for (int j = -length / 2; j < length / 2; j++) {
+                vertices.push_back(glimac::ShapeVertex(glm::vec3(i, (randomize_elevation) ? randomFloat(0.4) : 0.f, j), normal, glm::vec2(i * decW, j * decL)));
+            }
+        }
 
-        indices.push_back(0);
-        indices.push_back(1);
-        indices.push_back(2);
-        indices.push_back(0);
-        indices.push_back(2);
-        indices.push_back(3);
+        for (int j = 0; j < length - 1; j++) {
+            for (int i = 0; i < width; i++) {
+                indices.push_back(i + j * width);
+                indices.push_back(i + 1 + j * width);
+                indices.push_back(i + width + j * width);
+                indices.push_back(i + 1 + j * width);
+                indices.push_back(i + width + 1 + j * width);
+                indices.push_back(i + width + j * width);
+            }
+        }
 
-        numVertices = 4;
-        numIndices = 6;
+        numVertices = vertices.size();
+        numIndices  = indices.size();
 
-        material = new Material(prog_GLid);
-        material->color = color;
-        material->isLamp = false;
-        material->hasTexture = false;
-        material->shininess  = 20.f;
-        material->specularIntensity  = 1.f;
+        material                    = new Material(prog_GLid);
+        material->color             = color;
+        material->isLamp            = false;
+        material->hasTexture        = false;
+        material->shininess         = 20.f;
+        material->specularIntensity = 1.f;
     }
 };
 
@@ -352,8 +363,8 @@ public:
         AmbiantLight    = glm::vec3(0, 0, 0);
         NbMoons         = 0;
 
-        floor = new Rectangle(prog_GLid, 20.f, 20.f, glm::vec3(0, 1, 0));
-        sky = new Rectangle(prog_GLid, 100.f, 100.f, glm::vec3(0, 0, 1));
+        floor = new Rectangle(prog_GLid, 20.f, 20.f, true, glm::vec3(0, 1, 0));
+        sky = new Rectangle(prog_GLid, 100.f, 100.f, false, glm::vec3(0, 0, 1));
 
         // chargement texture
         floor->material->uTextures[0] = glimac::loadImage(applicationPath.dirPath() + "./assets/textures/herbe.jpg");
@@ -475,11 +486,6 @@ static void size_callback(GLFWwindow* /*window*/, int width, int height)
 {
     window_width  = width;
     window_height = height;
-}
-
-float randomFloat(float limit)
-{
-    return static_cast<float>(rand()) / static_cast<float>(RAND_MAX / limit);
 }
 
 void HandleContinuousEvents()
@@ -642,7 +648,7 @@ void DrawWagon(GLuint vbo){
 void DrawFloor(GLuint vbo){
     glm::mat4 floorMVMatrix = generalInfos->globalMVMatrix;
     floorMVMatrix           = glm::translate(floorMVMatrix, glm::vec3(0, generalInfos->floorElevation, 0));
-    floorMVMatrix           = glm::rotate(floorMVMatrix, glm::radians(90.f), glm::vec3(1, 0, 0));
+    //floorMVMatrix           = glm::rotate(floorMVMatrix, glm::radians(90.f), glm::vec3(1, 0, 0));
 
     // charge les infos
     generalInfos->floor->material->ChargeMatrices(floorMVMatrix, generalInfos->projMatrix);
@@ -659,7 +665,7 @@ void DrawFloor(GLuint vbo){
 void DrawSky(GLuint vbo){
     glm::mat4 SkyMVMatrix = generalInfos->globalMVMatrix;
     SkyMVMatrix             = glm::translate(SkyMVMatrix, glm::vec3(0, generalInfos->floorElevation + generalInfos->skyElevation, 0));
-    SkyMVMatrix             = glm::rotate(SkyMVMatrix, glm::radians(-90.f), glm::vec3(1, 0, 0));
+    //SkyMVMatrix             = glm::rotate(SkyMVMatrix, glm::radians(-90.f), glm::vec3(1, 0, 0));
 
     // charge les infos
     generalInfos->sky->material->ChargeMatrices(SkyMVMatrix, generalInfos->projMatrix);

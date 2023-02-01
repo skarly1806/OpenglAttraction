@@ -258,25 +258,25 @@ public:
 
     Material* material;
 
-    Rectangle(GLint prog_GLid, float width, float length, bool randomize_elevation, glm::vec3 color = glm::vec3(1, 1, 1))
+    Rectangle(GLint prog_GLid, float width_vertex_nb, float length_vertex_nb, bool randomize_elevation, glm::vec3 color = glm::vec3(1, 1, 1))
     {
-        float     decW   = 1 / width;
-        float     decL   = 1 / length;
+        float     decW   = 1 / (width_vertex_nb - 1);
+        float     decL   = 1 / (length_vertex_nb - 1);
         glm::vec3 normal = glm::vec3(0, 1, 0);
-        for (int i = 0; i < width; i++) {
-            for (int j = 0; j < length; j++) {
+        for (int i = 0; i < width_vertex_nb; i++) {
+            for (int j = 0; j < length_vertex_nb; j++) {
                 vertices.push_back(glimac::ShapeVertex(glm::vec3(i, (randomize_elevation) ? randomFloat(0.4) : 0.f, j), normal, glm::vec2(i * decW, j * decL)));
             }
         }
 
-        for (int j = 0; j < length - 1; j++) {
-            int offset = j * width;
-            for (int i = 0; i < width - 1; i++) {
-                indices.push_back(i + width + offset);
+        for (int j = 0; j < length_vertex_nb - 1; j++) {
+            int offset = j * width_vertex_nb;
+            for (int i = 0; i < width_vertex_nb - 1; i++) {
+                indices.push_back(i + width_vertex_nb + offset);
                 indices.push_back(i + 1 + offset);
                 indices.push_back(i + offset);
-                indices.push_back(i + width + offset);
-                indices.push_back(i + width + 1 + offset);
+                indices.push_back(i + width_vertex_nb + offset);
+                indices.push_back(i + width_vertex_nb + 1 + offset);
                 indices.push_back(i + 1 + offset);
             }
         }

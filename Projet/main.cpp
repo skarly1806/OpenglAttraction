@@ -236,7 +236,7 @@ public:
 
         speed = 0.f;
         minSpeed = 0.8f;
-        maxSpeed = 6.f;
+        maxSpeed = 4.5f;
 
         Position = glm::vec3(0, 0, 0);
     }

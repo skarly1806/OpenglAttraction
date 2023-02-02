@@ -1,38 +1,33 @@
-# Simple-Glimac-Setup
+# Projet
+## Description
+Il s'agit d'un petit terrain avec un circuit de rollercoaster. Le joueur peut s'y déplacer, monter dans le wagon, et oberver le mouvement.
 
-This is an alternative setup to follow [these tutorials](https://igm.univ-mlv.fr/~biri/Enseignement/IMAC2/opengl-TPs/opengl.php?section=teaching&teaching=opengl&teaching_section=tds). It has the advantage that **it is easy to use an all platforms** (Linux, Windows and Mac). It also fixes an annoying thing with the original setup: with this one you don't need to re-run CMake when you modify your shaders. The changes will be detected and handled automatically.
-
-## Compiling
-
-You need to install [CMake](https://cmake.org/download/).
-
-To use CMake I recommend this VS Code extension : [ms-vscode.cmake-tools](https://marketplace.visualstudio.com/items?itemName=ms-vscode.cmake-tools). You will need to setup the extension with a compiler. Here is [the tutorial](https://code.visualstudio.com/docs/cpp/cmake-linux). It is based on Linux but at the bottom of the page you will find the explanations to adapt it for [Windows](https://code.visualstudio.com/docs/cpp/config-msvc) and [Mac](https://code.visualstudio.com/docs/cpp/config-clang-mac).
-
-Alternatively you can just create a *build* folder at the root of this project, open a terminal and run `cmake ..` ; chances are it will detect what compiler you have installed and generate the appropriate Makefile / Visual Studio solution / Xcode project.
-
-## Projet
-
-Depuis wsl (a la racine du projet) :
-
-* Pour créer build/ et faire les cmake et make initiaux
+## Lancement
+### Pour lancer le projet
+* Pour créer le dossier build et faire les cmake et make initiaux, puis lancer le projet
 ```
-. setup_all.sh
+./setup_all.sh
+./bin/Projet_exe
 ```
-
-* Pour authoriser wsl à ouvrir des fenetres
-```
-. startup.sh
-```
-
-* Pour lancer le projet
+* Pour build puis lancer le projet (utile apres avoir modifié le code)
 ```
 . launch.sh
 ```
 
-## User inputs
+### Depuis wsl avec XLaunch (si besoin)
 
-To learn more about the parameters you receive in the callbacks, read [glfw's documentation](https://www.glfw.org/docs/latest/input_guide.html).
-
-## assets
-
-The *assets* folder will be copied to the folder where your executable is created. You can put all the assets that your project needs in there, like textures, shaders, 3D models *etc.*
+* Pour authoriser wsl à ouvrir des fenetres (avec XLaunch)
+```
+. startup.sh
+```
+## Manuel d'utilisation
+|Touche|Effet|
+|------|-----|
+|Echap|Ferme la fenetre|
+|Entrée|Change de caméra|
+|Espace|Lance / arrête le wagon|
+|Z|Avance|
+|S|Recule|
+|Q|Va a gauche (1ère personne seulement)|
+|D|Va a droite (1ère personne seulement)|
+|E|Monte dans le wagon (1ère personne seulement)|

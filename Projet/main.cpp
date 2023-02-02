@@ -2,13 +2,11 @@
 #include <GLFW/glfw3.h>
 #include <glad/glad.h>
 #include <cstddef>
-#include <glimac/Cone.hpp>
 #include <glimac/Cylindre.hpp>
 #include <glimac/FilePath.hpp>
 #include <glimac/FreeFlyCamera.hpp>
 #include <glimac/Geometry.hpp>
 #include <glimac/Image.hpp>
-#include <glimac/LoadObject.hpp>
 #include <glimac/Program.hpp>
 #include <glimac/Sphere.hpp>
 #include <glimac/TrackballCamera.hpp>
@@ -100,7 +98,6 @@ public:
                     glActiveTexture(GL_TEXTURE1);
                 glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, uTextures[i]->getWidth(), uTextures[i]->getHeight(), 0, GL_RGBA, GL_FLOAT, uTextures[i]->getPixels());
                 glUniform1i(uTextures_gl[i], i);
-                //glBindTexture(GL_TEXTURE_2D, 0);
             }
         }
     }
@@ -242,7 +239,6 @@ public:
     }
 
     void ResetState(){
-        //isActif  = false;
         indexPos = 0;
         speed   = 0.f;
     }
@@ -433,14 +429,6 @@ static void key_callback(GLFWwindow* /*window*/, int key, int /*scancode*/, int 
             generalInfos->mounting  = !generalInfos->mounting;
         }
     }
-}
-
-static void mouse_button_callback(GLFWwindow* /*window*/, int /*button*/, int /*action*/, int /*mods*/)
-{
-}
-
-static void scroll_callback(GLFWwindow* /*window*/, double /*xoffset*/, double /*yoffset*/)
-{
 }
 
 static void cursor_position_callback(GLFWwindow* /*window*/, double xpos, double ypos)
@@ -666,7 +654,6 @@ void DrawSky(GLuint vbo){
     glm::mat4 SkyMVMatrix = generalInfos->globalMVMatrix;
     SkyMVMatrix           = glm::translate(SkyMVMatrix, glm::vec3(-50, generalInfos->floorElevation + generalInfos->skyElevation, -50));
     SkyMVMatrix           = glm::scale(SkyMVMatrix, glm::vec3(100, 1, 100));
-    //SkyMVMatrix             = glm::rotate(SkyMVMatrix, glm::radians(-90.f), glm::vec3(1, 0, 0));
 
     // charge les infos
     generalInfos->sky->material->ChargeMatrices(SkyMVMatrix, generalInfos->projMatrix);
@@ -712,8 +699,6 @@ int main(int argc, char* argv[])
 
     /* Hook input callbacks */
     glfwSetKeyCallback(window, &key_callback);
-    glfwSetMouseButtonCallback(window, &mouse_button_callback);
-    glfwSetScrollCallback(window, &scroll_callback);
     glfwSetCursorPosCallback(window, &cursor_position_callback);
     glfwSetWindowSizeCallback(window, &size_callback);
 
@@ -912,8 +897,8 @@ int main(int argc, char* argv[])
         DrawWagon(vbo);
 
         // Positionnement de la sphère représentant la lumière 1
-        light1MVMatrix = glm::translate(light1MVMatrix, glm::vec3(light1Pos)); // Translation * Rotation * Translation
-        light1MVMatrix = glm::scale(light1MVMatrix, glm::vec3(.04, .04, .04)); // Translation * Rotation * Translation * Scale
+        light1MVMatrix = glm::translate(light1MVMatrix, glm::vec3(light1Pos));
+        light1MVMatrix = glm::scale(light1MVMatrix, glm::vec3(.04, .04, .04));
 
         Material* lamp1 = generalInfos->Lampes[0];
         lamp1->ChargeMatrices(light1MVMatrix, generalInfos->projMatrix);
@@ -928,8 +913,8 @@ int main(int argc, char* argv[])
         glBindBuffer(GL_ARRAY_BUFFER, 0);
 
         // Positionnement de la sphère représentant la lumière 2
-        light2MVMatrix = glm::translate(light2MVMatrix, glm::vec3(light2Pos)); // Translation * Rotation * Translation
-        light2MVMatrix = glm::scale(light2MVMatrix, glm::vec3(.04, .04, .04)); // Translation * Rotation * Translation * Scale
+        light2MVMatrix = glm::translate(light2MVMatrix, glm::vec3(light2Pos));
+        light2MVMatrix = glm::scale(light2MVMatrix, glm::vec3(.04, .04, .04));
 
         Material* lamp2 = generalInfos->Lampes[1];
         lamp2->ChargeMatrices(light2MVMatrix, generalInfos->projMatrix);
